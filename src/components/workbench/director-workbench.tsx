@@ -234,57 +234,78 @@ function StageView({ stageId }: { stageId: StageId }) {
 function ProjectBibleStage() {
   const bible = useWorkbenchStore((s) => s.projectBible)
   const updateBible = useWorkbenchStore((s) => s.updateBible)
+  const rawScript = useWorkbenchStore((s) => s.rawScript)
+  const updateRawScript = useWorkbenchStore((s) => s.updateRawScript)
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+    <div className="space-y-5">
+      <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+        <Card className="bg-slate-950/55">
+          <CardHeader>
+            <CardTitle className="text-lg">Stage 0 · 视觉圣经</CardTitle>
+            <CardDescription>先锁定方向，再让所有下游节点服从统一规则。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-slate-500">
+                风格锁定
+              </label>
+              <Input
+                value={bible.style}
+                onChange={(e) => updateBible('style', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-slate-500">
+                色彩脚本
+              </label>
+              <Textarea
+                value={bible.colorScript}
+                onChange={(e) => updateBible('colorScript', e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-slate-500">
+                禁忌规则
+              </label>
+              <Textarea
+                value={bible.forbidden}
+                onChange={(e) => updateBible('forbidden', e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-slate-950/55">
+          <CardHeader>
+            <CardTitle className="text-lg">约束摘要</CardTitle>
+            <CardDescription>
+              这是进入所有节点前必须统一的 Ground Truth Level 0。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm leading-7 text-slate-300">
+            <p>· 风格锁：{bible.style}</p>
+            <p>· 色彩脚本：{bible.colorScript}</p>
+            <p>· 禁用规则：{bible.forbidden}</p>
+          </CardContent>
+        </Card>
+      </div>
+      {/* 原始剧本大纲输入 */}
       <Card className="bg-slate-950/55">
         <CardHeader>
-          <CardTitle className="text-lg">Stage 0 · 视觉圣经</CardTitle>
-          <CardDescription>先锁定方向，再让所有下游节点服从统一规则。</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-slate-500">
-              风格锁定
-            </label>
-            <Input
-              value={bible.style}
-              onChange={(e) => updateBible('style', e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-slate-500">
-              色彩脚本
-            </label>
-            <Textarea
-              value={bible.colorScript}
-              onChange={(e) => updateBible('colorScript', e.target.value)}
-              className="min-h-[120px]"
-            />
-          </div>
-          <div>
-            <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-slate-500">
-              禁忌规则
-            </label>
-            <Textarea
-              value={bible.forbidden}
-              onChange={(e) => updateBible('forbidden', e.target.value)}
-              className="min-h-[120px]"
-            />
-          </div>
-        </CardContent>
-      </Card>
-      <Card className="bg-slate-950/55">
-        <CardHeader>
-          <CardTitle className="text-lg">约束摘要</CardTitle>
+          <CardTitle className="text-lg">📜 原始剧本大纲</CardTitle>
           <CardDescription>
-            这是进入所有节点前必须统一的 Ground Truth Level 0。
+            提供你的故事线 / 基础大纲。签发后，AI 将基于圣经约束和这段大纲进行深度扩写。
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm leading-7 text-slate-300">
-          <p>· 风格锁：{bible.style}</p>
-          <p>· 色彩脚本：{bible.colorScript}</p>
-          <p>· 禁用规则：{bible.forbidden}</p>
+        <CardContent>
+          <Textarea
+            placeholder="例如：勇士进入了昏暗的山洞，发现了一只巨龙……"
+            value={rawScript}
+            onChange={(e) => updateRawScript(e.target.value)}
+            className="min-h-[160px]"
+          />
         </CardContent>
       </Card>
     </div>

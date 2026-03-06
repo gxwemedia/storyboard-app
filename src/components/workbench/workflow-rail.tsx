@@ -1,4 +1,4 @@
-﻿import { ArrowRight, BookMarked, Clapperboard, FileStack, Flame, ScanSearch, Sparkles } from 'lucide-react'
+import { ArrowRight, BookMarked, Clapperboard, FileStack, Flame, ScanSearch, Sparkles } from 'lucide-react'
 import { workflowStages } from '@/data'
 import { getStageStatus, useWorkbenchStore } from '@/store/workbench-store'
 import type { StageId } from '@/types'
@@ -12,7 +12,7 @@ export function WorkflowRail() {
   const workflowStageId = useWorkbenchStore((state) => state.workflowStageId)
   const focusedStageId = useWorkbenchStore((state) => state.focusedStageId)
   const setFocusedStage = useWorkbenchStore((state) => state.setFocusedStage)
-  const expandedScript = useWorkbenchStore((state) => state.expandedScript)
+  const rawScript = useWorkbenchStore((state) => state.rawScript)
   const archiveReady = useWorkbenchStore((state) => state.archiveReady)
 
   return (
@@ -45,7 +45,7 @@ export function WorkflowRail() {
       </Card>
       <Card className="bg-[rgba(8,14,28,0.88)]">
         <CardHeader className="pb-4"><CardTitle className="text-base">导演指令室</CardTitle><CardDescription>项目入口保留在侧栏，导演可以随时回看原始意图与文本基调。</CardDescription></CardHeader>
-        <CardContent className="space-y-3"><Textarea value={expandedScript} readOnly className="min-h-[180px] bg-slate-950/60 text-sm text-slate-200" /><div className="flex items-center gap-2 text-xs text-slate-500"><ArrowRight className="size-3.5" />当前工作流停留在 Stage 0{workflowStageId}。</div></CardContent>
+        <CardContent className="space-y-3"><Textarea value={rawScript} readOnly className="min-h-[180px] bg-slate-950/60 text-sm text-slate-200" /><div className="flex items-center gap-2 text-xs text-slate-500"><ArrowRight className="size-3.5" />当前工作流停留在 Stage 0{workflowStageId}。</div></CardContent>
       </Card>
     </div>
   )

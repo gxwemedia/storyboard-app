@@ -16,6 +16,7 @@ interface WorkbenchState {
 
   // Data
   projectBible: ProjectBible
+  rawScript: string
   expandedScript: string
   conceptReferences: ConceptReference[]
   selectedConceptId: string
@@ -35,6 +36,7 @@ interface WorkbenchState {
 
   // Actions — 数据编辑
   updateBible: (field: keyof ProjectBible, value: string) => void
+  updateRawScript: (value: string) => void
   updateExpandedScript: (value: string) => void
   selectConcept: (id: string) => void
   updateShot: (id: string, field: keyof Pick<ShotSpec, 'description' | 'lens' | 'composition' | 'emotion'>, value: string) => void
@@ -64,7 +66,8 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   focusedStageId: 0,
   archiveReady: false,
   projectBible: initialBible,
-  expandedScript: initialScript,
+  rawScript: initialScript,
+  expandedScript: '',
   conceptReferences,
   selectedConceptId: conceptReferences[0].id,
   shotSpecs: initialShotSpecs,
@@ -125,6 +128,8 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   updateBible: (field, value) =>
     set((state) => ({ projectBible: { ...state.projectBible, [field]: value } })),
 
+  updateRawScript: (value) => set({ rawScript: value }),
+
   updateExpandedScript: (value) => set({ expandedScript: value }),
 
   selectConcept: (id) => set({ selectedConceptId: id }),
@@ -153,8 +158,8 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
 
     try {
       if (stageId === 1) {
-        // Stage 1: 剧本扩写
-        const result = await orchestrateStage1(state.projectBible, state.expandedScript)
+        // Stage 1: 剧本扩写 — 用原始大纲作为输入
+        const result = await orchestrateStage1(state.projectBible, state.rawScript)
         set({ expandedScript: result.expandedScript, aiStatus: 'idle' })
         get().appendLog('success', `Stage 1 AI 扩写完成（${result.expandedScript.length} 字）。`)
       } else if (stageId === 3) {
