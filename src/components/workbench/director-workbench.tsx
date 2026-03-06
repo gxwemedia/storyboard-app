@@ -367,41 +367,225 @@ function ExpandedScriptStage() {
 }
 
 function ConceptStage() {
-  const references = useWorkbenchStore((s) => s.conceptReferences)
-  const selectedConceptId = useWorkbenchStore((s) => s.selectedConceptId)
-  const selectConcept = useWorkbenchStore((s) => s.selectConcept)
+  const characters = useWorkbenchStore((s) => s.characters)
+  const scenes = useWorkbenchStore((s) => s.scenes)
+  const aiStatus = useWorkbenchStore((s) => s.aiStatus)
+
+  const updateCharacterField = useWorkbenchStore((s) => s.updateCharacterField)
+  const updateCharacterImage = useWorkbenchStore((s) => s.updateCharacterImage)
+  const toggleCharacterLock = useWorkbenchStore((s) => s.toggleCharacterLock)
+  const addCharacter = useWorkbenchStore((s) => s.addCharacter)
+  const removeCharacter = useWorkbenchStore((s) => s.removeCharacter)
+
+  const updateSceneField = useWorkbenchStore((s) => s.updateSceneField)
+  const updateSceneImage = useWorkbenchStore((s) => s.updateSceneImage)
+  const toggleSceneLock = useWorkbenchStore((s) => s.toggleSceneLock)
+  const addScene = useWorkbenchStore((s) => s.addScene)
+  const removeScene = useWorkbenchStore((s) => s.removeScene)
+
+  const runConsistencyAI = useWorkbenchStore((s) => s.runConsistencyAI)
+
+  const isGenerating = aiStatus === 'generating'
 
   return (
-    <div className="grid gap-4 xl:grid-cols-3">
-      {references.map((reference) => (
-        <button
-          key={reference.id}
-          type="button"
-          onClick={() => selectConcept(reference.id)}
-          className={[
-            'group relative overflow-hidden rounded-[28px] border p-5 text-left transition',
-            selectedConceptId === reference.id
-              ? 'border-fuchsia-400/25 shadow-[0_18px_50px_-28px_rgba(217,70,239,0.55)]'
-              : 'border-white/8',
-          ].join(' ')}
+    <Tabs defaultValue="characters" className="flex h-full min-h-0 flex-col">
+      <TabsList>
+        <TabsTrigger value="characters">
+          角色设定 ({characters.length})
+        </TabsTrigger>
+        <TabsTrigger value="scenes">
+          场景设定 ({scenes.length})
+        </TabsTrigger>
+      </TabsList>
+
+      {/* ========== 角色设定面板 ========== */}
+      <TabsContent value="characters" className="h-full min-h-0 overflow-auto">
+        <div className="grid gap-4 xl:grid-cols-2">
+          {characters.map((char) => (
+            <DesignSlot
+              key={char.id}
+              item={char}
+              type="character"
+              onUpdateField={(field, value) => updateCharacterField(char.id, field, value)}
+              onUpdateImage={(url) => updateCharacterImage(char.id, url)}
+              onToggleLock={() => toggleCharacterLock(char.id)}
+              onRemove={() => removeCharacter(char.id)}
+              onRunAI={() => runConsistencyAI('character', char.id)}
+              isGenerating={isGenerating}
+            />
+          ))}
+          <AddSlotButton label="添加角色" onClick={addCharacter} />
+        </div>
+      </TabsContent>
+
+      {/* ========== 场景设定面板 ========== */}
+      <TabsContent value="scenes" className="h-full min-h-0 overflow-auto">
+        <div className="grid gap-4 xl:grid-cols-2">
+          {scenes.map((scene) => (
+            <DesignSlot
+              key={scene.id}
+              item={scene}
+              type="scene"
+              onUpdateField={(field, value) => updateSceneField(scene.id, field, value)}
+              onUpdateImage={(url) => updateSceneImage(scene.id, url)}
+              onToggleLock={() => toggleSceneLock(scene.id)}
+              onRemove={() => removeScene(scene.id)}
+              onRunAI={() => runConsistencyAI('scene', scene.id)}
+              isGenerating={isGenerating}
+            />
+          ))}
+          <AddSlotButton label="添加场景" onClick={addScene} />
+        </div>
+      </TabsContent>
+    </Tabs>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Shared subcomponents for character / scene slots
+// ---------------------------------------------------------------------------
+
+interface DesignSlotProps {
+  item: { id: string; name: string; description: string; imageUrl?: string; consistencyPrompt?: string; locked: boolean }
+  type: 'character' | 'scene'
+  onUpdateField: (field: 'name' | 'description', value: string) => void
+  onUpdateImage: (url: string) => void
+  onToggleLock: () => void
+  onRemove: () => void
+  onRunAI: () => void
+  isGenerating: boolean
+}
+
+function DesignSlot({ item, type, onUpdateField, onUpdateImage, onToggleLock, onRemove, onRunAI, isGenerating }: DesignSlotProps) {
+  const handleFileUpload = (file: File) => {
+    if (!file.type.startsWith('image/')) return
+    onUpdateImage(URL.createObjectURL(file))
+  }
+
+  const typeLabel = type === 'character' ? '角色' : '场景'
+  const accentColor = type === 'character' ? 'sky' : 'amber'
+
+  return (
+    <Card className="group overflow-hidden bg-slate-950/55">
+      <div className="flex flex-col gap-0 xl:flex-row">
+        {/* Image upload area */}
+        <label
+          className="relative block h-[180px] cursor-pointer overflow-hidden border-b border-white/8 bg-black/20 transition hover:bg-black/30 xl:h-auto xl:w-[200px] xl:border-b-0 xl:border-r"
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
+          onDrop={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            const file = e.dataTransfer.files[0]
+            if (file) handleFileUpload(file)
+          }}
         >
-          <div
-            className={[
-              'absolute inset-0 bg-gradient-to-br opacity-90',
-              reference.palette,
-            ].join(' ')}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handleFileUpload(file)
+            }}
           />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.2),transparent_40%)] opacity-60" />
-          <div className="relative flex h-[280px] flex-col justify-between rounded-[24px] border border-white/10 bg-black/25 p-5 backdrop-blur-sm">
-            <Badge className="w-fit border-white/15 bg-black/25 text-white">Reference</Badge>
-            <div>
-              <p className="text-xl font-semibold text-white">{reference.title}</p>
-              <p className="mt-3 text-sm leading-6 text-slate-200">{reference.subtitle}</p>
+          {item.imageUrl ? (
+            <img src={item.imageUrl} alt={item.name} className="size-full object-cover" />
+          ) : (
+            <div className="flex size-full flex-col items-center justify-center gap-2 text-slate-500">
+              <Sparkles className="size-6 opacity-40" />
+              <span className="text-xs">上传{typeLabel}参考图</span>
             </div>
+          )}
+        </label>
+
+        {/* Info area */}
+        <div className="flex min-w-0 flex-1 flex-col p-4">
+          {/* Header */}
+          <div className="mb-3 flex items-center gap-2">
+            <Badge className={`border-${accentColor}-400/20 bg-${accentColor}-400/10 text-${accentColor}-100`}>
+              {typeLabel}
+            </Badge>
+            {item.locked && (
+              <Badge className="border-emerald-400/20 bg-emerald-400/10 text-emerald-100">
+                ✓ 已锁定
+              </Badge>
+            )}
           </div>
-        </button>
-      ))}
-    </div>
+
+          {/* Editable fields */}
+          <input
+            type="text"
+            value={item.name}
+            onChange={(e) => onUpdateField('name', e.target.value)}
+            className="mb-1 w-full border-0 bg-transparent text-base font-semibold text-white outline-none placeholder:text-slate-500"
+            placeholder={`${typeLabel}名称`}
+          />
+          <Textarea
+            value={item.description}
+            onChange={(e) => onUpdateField('description', e.target.value)}
+            className="mb-3 min-h-[60px] bg-black/20 text-sm"
+            placeholder={`${typeLabel}描述：外貌、服饰、气质等关键视觉特征…`}
+          />
+
+          {/* AI consistency prompt */}
+          {item.consistencyPrompt && (
+            <div className="mb-3 rounded-[16px] border border-emerald-400/15 bg-emerald-500/5 p-3">
+              <p className="mb-1 text-xs font-medium text-emerald-300">AI 一致性描述</p>
+              <p className="text-xs leading-5 text-emerald-100/80">{item.consistencyPrompt}</p>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="mt-auto flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onRunAI}
+              disabled={isGenerating}
+              className="text-xs"
+            >
+              {isGenerating ? (
+                <Loader2 className="mr-1 size-3 animate-spin" />
+              ) : (
+                <Sparkles className="mr-1 size-3" />
+              )}
+              AI 反推描述
+            </Button>
+            <Button
+              variant={item.locked ? 'default' : 'secondary'}
+              size="sm"
+              onClick={onToggleLock}
+              className="text-xs"
+            >
+              {item.locked ? '✓ 解锁' : '🔒 锁定'}
+            </Button>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="ml-auto rounded-full p-1.5 text-slate-500 opacity-0 transition hover:bg-rose-500/15 hover:text-rose-300 group-hover:opacity-100"
+              title={`删除此${typeLabel}`}
+            >
+              <ShieldAlert className="size-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function AddSlotButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-[180px] flex-col items-center justify-center gap-3 rounded-[24px] border border-dashed border-white/10 bg-white/[0.02] text-slate-500 transition hover:border-white/20 hover:bg-white/[0.04] hover:text-slate-300"
+    >
+      <div className="rounded-full border border-white/10 bg-white/[0.05] p-3">
+        <Sparkles className="size-5" />
+      </div>
+      <span className="text-sm font-medium">{label}</span>
+    </button>
   )
 }
 

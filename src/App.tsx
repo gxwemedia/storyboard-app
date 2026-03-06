@@ -26,7 +26,8 @@ export default function App() {
   const expandedScript = useWorkbenchStore((state) => state.expandedScript)
   const shotSpecs = useWorkbenchStore((state) => state.shotSpecs)
   const finalNotes = useWorkbenchStore((state) => state.finalNotes)
-  const selectedConceptId = useWorkbenchStore((state) => state.selectedConceptId)
+  const characters = useWorkbenchStore((state) => state.characters)
+  const scenes = useWorkbenchStore((state) => state.scenes)
   const outputs = useWorkbenchStore((state) => state.outputs)
   const archiveReady = useWorkbenchStore((state) => state.archiveReady)
 
@@ -43,7 +44,7 @@ export default function App() {
 
   const handleExport = () => {
     if (!archiveReady) { toast.warning('请先完成 Stage 5 终版签发。'); return }
-    const payload = { exportedAt: new Date().toISOString(), projectBible, expandedScript, selectedConceptId, shotSpecs, finalNotes, outputs }
+    const payload = { exportedAt: new Date().toISOString(), projectBible, expandedScript, characters, scenes, shotSpecs, finalNotes, outputs }
     downloadPackage(JSON.stringify(payload, null, 2))
     appendLog('success', '交付包已导出：ShotSpec JSON / 终版摘要 / 输出镜头清单。')
     toast.success('已导出交付包 JSON')

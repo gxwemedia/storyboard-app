@@ -157,9 +157,73 @@ export async function orchestrateStage0(): Promise<void> {
   // 人类输入阶段，无 AI 调用
 }
 
-/** Stage 2: 概念设定需要生图引擎（ComfyUI / RunningHub），后续接入 */
-export async function orchestrateStage2(): Promise<void> {
-  // 需要生图引擎，后续与 Supabase + RunningHub 集成
+/** Stage 2: 角色/场景一致性描述反推 */
+export interface Stage2ConsistencyResult {
+  consistencyPrompt: string
+}
+
+const STAGE2_CHARACTER_PROMPT = `你是一位专业的角色视觉设定师，服务于工业级分镜制片管线。
+
+你的任务：根据导演提供的"项目视觉圣经"和"角色基本信息"，生成一段详细的角色外观一致性描述。
+
+这段描述的目的是：在后续所有分镜中，任何图像生成引擎都能仅通过这段文字，精确还原该角色的外貌特征，确保跨镜头的角色一致性。
+
+描述必须包含：
+1. 面部特征（脸型、五官、肤色、表情基调）
+2. 发型与发色
+3. 体型与姿态气质
+4. 服装/盔甲/装备（材质、颜色、磨损程度）
+5. 标志性特征（伤疤、饰品、武器等）
+6. 光照条件下的视觉表现建议
+
+输出格式：直接输出一段连贯的中文描述（200-400字），不要用列表，不要用 markdown。这段文本将直接嵌入后续的分镜 Prompt 中。`
+
+const STAGE2_SCENE_PROMPT = `你是一位专业的场景视觉设计师，服务于工业级分镜制片管线。
+
+你的任务：根据导演提供的"项目视觉圣经"和"场景基本信息"，生成一段详细的场景环境一致性描述。
+
+这段描述的目的是：在后续所有分镜中，任何图像生成引擎都能仅通过这段文字，精确还原该场景的空间氛围，确保跨镜头的环境一致性。
+
+描述必须包含：
+1. 空间结构与尺度（建筑形制、室内/室外、纵深感）
+2. 材质与纹理（石材、木材、植被、水体等）
+3. 光照环境（主光源方向、色温、阴影特征、雾气/粒子）
+4. 色彩基调（与色彩脚本对齐）
+5. 氛围关键词（压迫感/开阔/神秘/温暖等）
+6. 关键道具与环境元素
+
+输出格式：直接输出一段连贯的中文描述（200-400字），不要用列表，不要用 markdown。这段文本将直接嵌入后续的分镜 Prompt 中。`
+
+export async function orchestrateStage2Consistency(
+  bible: ProjectBible,
+  type: 'character' | 'scene',
+  name: string,
+  description: string,
+): Promise<Stage2ConsistencyResult> {
+  const systemPrompt = type === 'character' ? STAGE2_CHARACTER_PROMPT : STAGE2_SCENE_PROMPT
+  const label = type === 'character' ? '角色' : '场景'
+
+  const messages: AiMessage[] = [
+    { role: 'system', content: systemPrompt },
+    {
+      role: 'user',
+      content: [
+        '【项目视觉圣经 (Ground Truth Level 0)】',
+        `· 风格锁定：${bible.style}`,
+        `· 色彩脚本：${bible.colorScript}`,
+        `· 禁忌规则：${bible.forbidden}`,
+        '',
+        `【${label}信息】`,
+        `· 名称：${name}`,
+        `· 描述：${description}`,
+        '',
+        `请为「${name}」生成一致性视觉描述。`,
+      ].join('\n'),
+    },
+  ]
+
+  const response = await sendPrompt(messages, { temperature: 0.6 })
+  return { consistencyPrompt: response.content.trim() }
 }
 
 /** Stage 4: 灰模预演需要渲染管线，后续接入 */

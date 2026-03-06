@@ -1,23 +1,28 @@
 /**
  * GPT-5.4 AI Client — 通信核心
  *
- * 使用 OpenAI Responses API 格式与 https://gmn.chuangzuoli.com 通信。
- * 后期可通过适配器模式切换到 Supabase Edge Function 代理。
+ * 支持两种 API 格式：
+ * 1. OpenAI Responses API  (/v1/responses)
+ * 2. OpenAI Chat Completions (/v1/chat/completions) — 大多数网关/代理兼容
+ *
+ * 默认使用 Chat Completions（兼容性最广），可通过 VITE_AI_WIRE_API 切换。
+ * 开发环境通过 Vite proxy 转发，绕过浏览器 CORS。
  */
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
+type WireApi = 'chat' | 'responses'
+
 const getConfig = () => {
   const isDev = import.meta.env.DEV
-  // 开发环境通过 Vite proxy（/api/ai）转发，绕过浏览器 CORS
-  // 生产环境直连远程 URL
   const remoteUrl = (import.meta.env.VITE_AI_BASE_URL as string) || 'https://gmn.chuangzuoli.com'
   return {
     baseUrl: isDev ? '/api/ai' : remoteUrl,
     apiKey: (import.meta.env.VITE_AI_API_KEY as string) || '',
     model: (import.meta.env.VITE_AI_MODEL as string) || 'gpt-5.4',
+    wireApi: ((import.meta.env.VITE_AI_WIRE_API as string) || 'chat') as WireApi,
   }
 }
 
@@ -31,13 +36,9 @@ export interface AiMessage {
 }
 
 export interface AiRequestOptions {
-  /** 请求超时（毫秒），默认 60 000 */
   timeoutMs?: number
-  /** 温度，默认 0.7 */
   temperature?: number
-  /** 如果需要 JSON 输出，设置为 true */
   jsonMode?: boolean
-  /** 可选 AbortSignal，由调用方控制取消 */
   signal?: AbortSignal
 }
 
@@ -61,17 +62,11 @@ export class AiClientError extends Error {
 // Core — sendPrompt
 // ---------------------------------------------------------------------------
 
-/**
- * 向 GPT-5.4 发送一次对话请求。
- *
- * 协议格式：OpenAI Responses API (`wire_api = "responses"`)
- * 端点：POST {baseUrl}/v1/responses
- */
 export async function sendPrompt(
   messages: AiMessage[],
   options: AiRequestOptions = {},
 ): Promise<AiResponse> {
-  const { baseUrl, apiKey, model } = getConfig()
+  const { baseUrl, apiKey, model, wireApi } = getConfig()
   const { timeoutMs = 60_000, temperature = 0.7, jsonMode = false, signal: externalSignal } = options
 
   if (!apiKey) {
@@ -82,7 +77,6 @@ export async function sendPrompt(
     )
   }
 
-  // Timeout 控制
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
   const signal = externalSignal
@@ -90,22 +84,12 @@ export async function sendPrompt(
     : controller.signal
 
   try {
-    // --- 构建 Responses API 请求体 ---
-    const body: Record<string, unknown> = {
-      model,
-      input: messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-      temperature,
-      store: false, // disable_response_storage = true
-    }
+    // 根据 wireApi 选择端点和请求格式
+    const { endpoint, body } = wireApi === 'responses'
+      ? buildResponsesRequest(baseUrl, model, messages, temperature, jsonMode)
+      : buildChatRequest(baseUrl, model, messages, temperature, jsonMode)
 
-    if (jsonMode) {
-      body.text = { format: { type: 'json_object' } }
-    }
-
-    const response = await fetch(`${baseUrl}/v1/responses`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -121,7 +105,9 @@ export async function sendPrompt(
     }
 
     const data = await response.json()
-    return parseResponse(data)
+    return wireApi === 'responses'
+      ? parseResponsesApiResult(data)
+      : parseChatResult(data)
   } catch (err) {
     if (err instanceof AiClientError) throw err
     if ((err as Error).name === 'AbortError') {
@@ -134,18 +120,76 @@ export async function sendPrompt(
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Request builders
 // ---------------------------------------------------------------------------
 
-function parseResponse(data: Record<string, unknown>): AiResponse {
-  // OpenAI Responses API 返回格式
-  // { id, output: [ { type: "message", content: [ { type: "output_text", text: "..." } ] } ], usage: {...} }
+function buildChatRequest(
+  baseUrl: string,
+  model: string,
+  messages: AiMessage[],
+  temperature: number,
+  jsonMode: boolean,
+) {
+  const body: Record<string, unknown> = {
+    model,
+    messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    temperature,
+  }
+  if (jsonMode) {
+    body.response_format = { type: 'json_object' }
+  }
+  return { endpoint: `${baseUrl}/v1/chat/completions`, body }
+}
+
+function buildResponsesRequest(
+  baseUrl: string,
+  model: string,
+  messages: AiMessage[],
+  temperature: number,
+  jsonMode: boolean,
+) {
+  const body: Record<string, unknown> = {
+    model,
+    input: messages.map((m) => ({ role: m.role, content: m.content })),
+    temperature,
+    store: false,
+  }
+  if (jsonMode) {
+    body.text = { format: { type: 'json_object' } }
+  }
+  return { endpoint: `${baseUrl}/v1/responses`, body }
+}
+
+// ---------------------------------------------------------------------------
+// Response parsers
+// ---------------------------------------------------------------------------
+
+function parseChatResult(data: Record<string, unknown>): AiResponse {
+  const choices = data.choices as Array<Record<string, unknown>> | undefined
+  if (!choices || choices.length === 0) {
+    throw new AiClientError('API 返回了空 choices。', 0, 'EMPTY_RESPONSE')
+  }
+  const msg = choices[0].message as Record<string, unknown> | undefined
+  const content = (msg?.content as string) || ''
+  if (!content) {
+    throw new AiClientError('API 返回了空消息内容。', 0, 'EMPTY_RESPONSE')
+  }
+
+  const usage = data.usage as Record<string, number> | undefined
+  return {
+    content,
+    usage: usage
+      ? { input_tokens: usage.prompt_tokens ?? 0, output_tokens: usage.completion_tokens ?? 0 }
+      : undefined,
+  }
+}
+
+function parseResponsesApiResult(data: Record<string, unknown>): AiResponse {
   const output = data.output as Array<Record<string, unknown>> | undefined
   if (!output || output.length === 0) {
     throw new AiClientError('API 返回了空响应。', 0, 'EMPTY_RESPONSE')
   }
 
-  // 从 output 数组中提取文本
   let content = ''
   for (const item of output) {
     if (item.type === 'message') {
@@ -160,23 +204,12 @@ function parseResponse(data: Record<string, unknown>): AiResponse {
     }
   }
 
+  // Fallback: chat completions 格式
   if (!content) {
-    // Fallback: 尝试 chat completions 兼容格式
-    const choices = data.choices as Array<Record<string, unknown>> | undefined
-    if (choices?.[0]) {
-      const msg = choices[0].message as Record<string, unknown> | undefined
-      if (msg && typeof msg.content === 'string') {
-        content = msg.content
-      }
-    }
-  }
-
-  if (!content) {
-    throw new AiClientError('无法从 API 响应中提取文本内容。', 0, 'PARSE_ERROR')
+    return parseChatResult(data)
   }
 
   const usage = data.usage as { input_tokens?: number; output_tokens?: number } | undefined
-
   return {
     content,
     usage: usage
@@ -185,10 +218,15 @@ function parseResponse(data: Record<string, unknown>): AiResponse {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Error helpers
+// ---------------------------------------------------------------------------
+
 function createHttpError(status: number, body: string): AiClientError {
   const messages: Record<number, string> = {
     401: '鉴权失败：API Key 无效或已过期。请检查 .env 中的 VITE_AI_API_KEY。',
     403: '访问被拒绝：当前 API Key 无权访问此模型。',
+    404: 'API 端点不存在。请检查 .env 中的 VITE_AI_WIRE_API 设置（chat 或 responses）。',
     429: 'API 请求过于频繁（Rate Limit），请稍后重试。',
     500: 'API 服务端内部错误，请稍后重试。',
     502: 'API 网关错误，服务可能暂时不可用。',
@@ -208,7 +246,7 @@ function composeAbortSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
 }
 
 // ---------------------------------------------------------------------------
-// Diagnostic — 检测连通性
+// Diagnostic
 // ---------------------------------------------------------------------------
 
 export async function checkConnection(): Promise<{ ok: boolean; message: string }> {
