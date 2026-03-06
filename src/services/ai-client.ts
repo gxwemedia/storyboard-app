@@ -9,11 +9,17 @@
 // Config
 // ---------------------------------------------------------------------------
 
-const getConfig = () => ({
-  baseUrl: (import.meta.env.VITE_AI_BASE_URL as string) || 'https://gmn.chuangzuoli.com',
-  apiKey: (import.meta.env.VITE_AI_API_KEY as string) || '',
-  model: (import.meta.env.VITE_AI_MODEL as string) || 'gpt-5.4',
-})
+const getConfig = () => {
+  const isDev = import.meta.env.DEV
+  // 开发环境通过 Vite proxy（/api/ai）转发，绕过浏览器 CORS
+  // 生产环境直连远程 URL
+  const remoteUrl = (import.meta.env.VITE_AI_BASE_URL as string) || 'https://gmn.chuangzuoli.com'
+  return {
+    baseUrl: isDev ? '/api/ai' : remoteUrl,
+    apiKey: (import.meta.env.VITE_AI_API_KEY as string) || '',
+    model: (import.meta.env.VITE_AI_MODEL as string) || 'gpt-5.4',
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Types
