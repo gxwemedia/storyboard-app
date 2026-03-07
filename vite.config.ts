@@ -23,6 +23,12 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/ai/, ''),
         secure: true,
       },
+      '/api/gemini-image': {
+        target: 'https://yunwu.ai',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/gemini-image/, ''),
+        secure: true,
+      },
     },
   },
 })

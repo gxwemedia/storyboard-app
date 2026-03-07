@@ -7,7 +7,7 @@
 
 import type { AiMessage } from './ai-client'
 import { sendPrompt, sendImagePrompt } from './ai-client'
-import type { ProjectBible, ShotSpec } from '@/types'
+import type { ImageGenSettings, ProjectBible, ShotSpec } from '@/types'
 
 // ---------------------------------------------------------------------------
 // Stage 1 — 剧本扩写 (Script & Emotion Expansion)
@@ -240,14 +240,17 @@ export async function generateDesignImage(
   name: string,
   description: string,
   consistencyPrompt?: string,
+  imageSettings?: ImageGenSettings,
 ): Promise<ImageGenResult> {
   const typeLabel = type === 'character' ? '角色' : '场景'
   const visualRef = consistencyPrompt
     ? `\n\n一致性视觉描述参考：${consistencyPrompt}`
     : ''
+  const aspectRatio = imageSettings?.aspectRatio || (type === 'character' ? '9:16' : '16:9')
+  const imageSize = imageSettings?.imageSize || '1K'
 
   const prompt = [
-    `请为以下${typeLabel}生成一张高质量的概念设计图：`,
+    `请为以下${typeLabel}生成一张高质量、电影概念设定级别的图片：`,
     '',
     `${typeLabel}名称：${name}`,
     `${typeLabel}描述：${description}`,
@@ -260,17 +263,19 @@ export async function generateDesignImage(
     `要求：`,
     `- 画面风格严格遵循上述风格要求`,
     `- 构图清晰，主体突出`,
+    `- 输出宽高比：${aspectRatio}`,
+    `- 输出清晰度：${imageSize}`,
     type === 'character'
       ? '- 角色正面或3/4侧面，展示完整服饰和体态特征'
       : '- 场景广角展示，包含典型光照和氛围',
     `- 适合作为影视分镜的参考概念设定图`,
   ].join('\n')
 
-  const response = await sendImagePrompt(prompt, { timeoutMs: 120_000 })
+  const response = await sendImagePrompt(prompt, { timeoutMs: 120_000, aspectRatio, imageSize })
 
   if (response.imageUrls && response.imageUrls.length > 0) {
     return { imageUrl: response.imageUrls[0] }
   }
 
-  throw new Error(`GPT-5.4 未返回图片。文本回复：${response.content.slice(0, 100)}`)
+  throw new Error(`Gemini 未返回图片。文本回复：${response.content.slice(0, 100)}`)
 }

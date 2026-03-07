@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { workflowStages } from '@/data'
 import { useWorkbenchStore } from '@/store/workbench-store'
-import type { StageId } from '@/types'
+import type { ImageAspectRatio, ImageSize, StageId } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -38,6 +38,20 @@ interface DirectorWorkbenchProps {
   onApprove: () => void
   onReject: () => void
 }
+
+const aspectRatioOptions: Array<{ value: ImageAspectRatio; label: string }> = [
+  { value: '1:1', label: '1:1 方图' },
+  { value: '3:4', label: '3:4 竖幅' },
+  { value: '4:3', label: '4:3 横幅' },
+  { value: '9:16', label: '9:16 竖屏' },
+  { value: '16:9', label: '16:9 宽屏' },
+]
+
+const imageSizeOptions: Array<{ value: ImageSize; label: string }> = [
+  { value: '1K', label: '1K 标清' },
+  { value: '2K', label: '2K 高清' },
+  { value: '4K', label: '4K 超清' },
+]
 
 const stageAccent: Record<StageId, string> = {
   0: 'border-sky-400/25 bg-sky-500/10 text-sky-100',
@@ -168,7 +182,7 @@ export function DirectorWorkbench({ onApprove, onReject }: DirectorWorkbenchProp
                 {isGenerating && (
                   <div className="ml-auto flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1.5 text-xs text-sky-100">
                     <Loader2 className="size-3 animate-spin" />
-                    GPT-5.4 生成中…
+                    AI 处理中…
                   </div>
                 )}
               </div>
@@ -373,12 +387,14 @@ function ConceptStage() {
 
   const updateCharacterField = useWorkbenchStore((s) => s.updateCharacterField)
   const updateCharacterImage = useWorkbenchStore((s) => s.updateCharacterImage)
+  const updateCharacterImageSetting = useWorkbenchStore((s) => s.updateCharacterImageSetting)
   const toggleCharacterLock = useWorkbenchStore((s) => s.toggleCharacterLock)
   const addCharacter = useWorkbenchStore((s) => s.addCharacter)
   const removeCharacter = useWorkbenchStore((s) => s.removeCharacter)
 
   const updateSceneField = useWorkbenchStore((s) => s.updateSceneField)
   const updateSceneImage = useWorkbenchStore((s) => s.updateSceneImage)
+  const updateSceneImageSetting = useWorkbenchStore((s) => s.updateSceneImageSetting)
   const toggleSceneLock = useWorkbenchStore((s) => s.toggleSceneLock)
   const addScene = useWorkbenchStore((s) => s.addScene)
   const removeScene = useWorkbenchStore((s) => s.removeScene)
@@ -398,6 +414,9 @@ function ConceptStage() {
           场景设定 ({scenes.length})
         </TabsTrigger>
       </TabsList>
+      <div className="mb-4 rounded-[18px] border border-white/8 bg-white/[0.03] px-4 py-3 text-xs text-slate-400">
+        Stage 02 已接入 Gemini 原生生图接口。每个角色 / 场景卡片都可以单独控制宽高比与清晰度。
+      </div>
 
       {/* ========== 角色设定面板 ========== */}
       <TabsContent value="characters" className="h-full min-h-0 overflow-auto">
@@ -409,6 +428,7 @@ function ConceptStage() {
               type="character"
               onUpdateField={(field, value) => updateCharacterField(char.id, field, value)}
               onUpdateImage={(url) => updateCharacterImage(char.id, url)}
+              onUpdateImageSetting={(field, value) => updateCharacterImageSetting(char.id, field, value)}
               onToggleLock={() => toggleCharacterLock(char.id)}
               onRemove={() => removeCharacter(char.id)}
               onRunAI={() => runConsistencyAI('character', char.id)}
@@ -430,6 +450,7 @@ function ConceptStage() {
               type="scene"
               onUpdateField={(field, value) => updateSceneField(scene.id, field, value)}
               onUpdateImage={(url) => updateSceneImage(scene.id, url)}
+              onUpdateImageSetting={(field, value) => updateSceneImageSetting(scene.id, field, value)}
               onToggleLock={() => toggleSceneLock(scene.id)}
               onRemove={() => removeScene(scene.id)}
               onRunAI={() => runConsistencyAI('scene', scene.id)}
@@ -449,10 +470,20 @@ function ConceptStage() {
 // ---------------------------------------------------------------------------
 
 interface DesignSlotProps {
-  item: { id: string; name: string; description: string; imageUrl?: string; consistencyPrompt?: string; locked: boolean }
+  item: {
+    id: string
+    name: string
+    description: string
+    imageUrl?: string
+    consistencyPrompt?: string
+    imageAspectRatio: ImageAspectRatio
+    imageSize: ImageSize
+    locked: boolean
+  }
   type: 'character' | 'scene'
   onUpdateField: (field: 'name' | 'description', value: string) => void
   onUpdateImage: (url: string) => void
+  onUpdateImageSetting: (field: 'imageAspectRatio' | 'imageSize', value: ImageAspectRatio | ImageSize) => void
   onToggleLock: () => void
   onRemove: () => void
   onRunAI: () => void
@@ -460,7 +491,7 @@ interface DesignSlotProps {
   isGenerating: boolean
 }
 
-function DesignSlot({ item, type, onUpdateField, onUpdateImage, onToggleLock, onRemove, onRunAI, onRunImageGen, isGenerating }: DesignSlotProps) {
+function DesignSlot({ item, type, onUpdateField, onUpdateImage, onUpdateImageSetting, onToggleLock, onRemove, onRunAI, onRunImageGen, isGenerating }: DesignSlotProps) {
   const handleFileUpload = (file: File) => {
     if (!file.type.startsWith('image/')) return
     onUpdateImage(URL.createObjectURL(file))
@@ -539,6 +570,37 @@ function DesignSlot({ item, type, onUpdateField, onUpdateImage, onToggleLock, on
               <p className="text-xs leading-5 text-emerald-100/80">{item.consistencyPrompt}</p>
             </div>
           )}
+
+          <div className="mb-3 grid gap-2 md:grid-cols-2">
+            <label className="rounded-[16px] border border-white/8 bg-black/20 p-2.5 text-xs text-slate-400">
+              <span className="mb-1 block">宽高比</span>
+              <select
+                value={item.imageAspectRatio}
+                onChange={(e) => onUpdateImageSetting('imageAspectRatio', e.target.value as ImageAspectRatio)}
+                className="w-full rounded-[12px] border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+              >
+                {aspectRatioOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="rounded-[16px] border border-white/8 bg-black/20 p-2.5 text-xs text-slate-400">
+              <span className="mb-1 block">清晰度</span>
+              <select
+                value={item.imageSize}
+                onChange={(e) => onUpdateImageSetting('imageSize', e.target.value as ImageSize)}
+                className="w-full rounded-[12px] border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+              >
+                {imageSizeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           {/* Actions */}
           <div className="mt-auto flex flex-wrap items-center gap-2">

@@ -1,22 +1,32 @@
 import { create } from 'zustand'
 
 import { buildServerStates, initialBible, initialLogs, initialScript, initialShotSpecs, outputFrames, workflowStages } from '@/data'
-import type { AiStatus, CharacterDesign, LogEntry, ProjectBible, SceneDesign, ShotSpec, StageId } from '@/types'
+import type { AiStatus, CharacterDesign, ImageAspectRatio, ImageSize, LogEntry, ProjectBible, SceneDesign, ShotSpec, StageId } from '@/types'
 import { orchestrateStage1, orchestrateStage2Consistency, orchestrateStage3, generateDesignImage } from '@/services/orchestrator'
 
 // ---------------------------------------------------------------------------
 // Initial character / scene data (extracted from the user's script)
 // ---------------------------------------------------------------------------
 
+const DEFAULT_CHARACTER_IMAGE_SETTINGS = {
+  imageAspectRatio: '9:16' as const,
+  imageSize: '1K' as const,
+}
+
+const DEFAULT_SCENE_IMAGE_SETTINGS = {
+  imageAspectRatio: '16:9' as const,
+  imageSize: '1K' as const,
+}
+
 const initialCharacters: CharacterDesign[] = [
-  { id: 'char-qinmu', name: '秦牧', description: '主角，年轻猎魔人/牧童，机敏沉稳，随身携带饕餮袋', locked: false },
-  { id: 'char-longqilin', name: '龙麒麟', description: '秦牧的坐骑，外形如麒麟，能日行千里但贪吃，性格憨厚', locked: false },
-  { id: 'char-siyouyou', name: '司幼幽（婆婆）', description: '秦牧的养祖母，美丽女子外貌，体内镇压着厉教主，白天由她主导', locked: false },
+  { id: 'char-qinmu', name: '秦牧', description: '主角，年轻猎魔人/牧童，机敏沉稳，随身携带饕餮袋', locked: false, ...DEFAULT_CHARACTER_IMAGE_SETTINGS },
+  { id: 'char-longqilin', name: '龙麒麟', description: '秦牧的坐骑，外形如麒麟，能日行千里但贪吃，性格憨厚', locked: false, ...DEFAULT_CHARACTER_IMAGE_SETTINGS },
+  { id: 'char-siyouyou', name: '司幼幽（婆婆）', description: '秦牧的养祖母，美丽女子外貌，体内镇压着厉教主，白天由她主导', locked: false, ...DEFAULT_CHARACTER_IMAGE_SETTINGS },
 ]
 
 const initialScenes: SceneDesign[] = [
-  { id: 'scene-manor', name: '司婆婆宅院外', description: '新建的宅院，位于山林深处，清晨阴云笼罩，周围是延康的山林', locked: false },
-  { id: 'scene-road', name: '赶路途中（日夜交替）', description: '龙麒麟疾驰穿越旷野与山林，日落月升快速交替，距霸州一千里', locked: false },
+  { id: 'scene-manor', name: '司婆婆宅院外', description: '新建的宅院，位于山林深处，清晨阴云笼罩，周围是延康的山林', locked: false, ...DEFAULT_SCENE_IMAGE_SETTINGS },
+  { id: 'scene-road', name: '赶路途中（日夜交替）', description: '龙麒麟疾驰穿越旷野与山林，日落月升快速交替，距霸州一千里', locked: false, ...DEFAULT_SCENE_IMAGE_SETTINGS },
 ]
 
 // ---------------------------------------------------------------------------
@@ -56,12 +66,14 @@ interface WorkbenchState {
   // 角色
   updateCharacterField: (id: string, field: 'name' | 'description', value: string) => void
   updateCharacterImage: (id: string, imageUrl: string) => void
+  updateCharacterImageSetting: (id: string, field: 'imageAspectRatio' | 'imageSize', value: ImageAspectRatio | ImageSize) => void
   toggleCharacterLock: (id: string) => void
   addCharacter: () => void
   removeCharacter: (id: string) => void
   // 场景
   updateSceneField: (id: string, field: 'name' | 'description', value: string) => void
   updateSceneImage: (id: string, imageUrl: string) => void
+  updateSceneImageSetting: (id: string, field: 'imageAspectRatio' | 'imageSize', value: ImageAspectRatio | ImageSize) => void
   toggleSceneLock: (id: string) => void
   addScene: () => void
   removeScene: (id: string) => void
@@ -164,6 +176,9 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   updateCharacterImage: (id, imageUrl) =>
     set((s) => ({ characters: s.characters.map((c) => (c.id === id ? { ...c, imageUrl } : c)) })),
 
+  updateCharacterImageSetting: (id, field, value) =>
+    set((s) => ({ characters: s.characters.map((c) => (c.id === id ? { ...c, [field]: value } : c)) })),
+
   toggleCharacterLock: (id) =>
     set((s) => ({ characters: s.characters.map((c) => (c.id === id ? { ...c, locked: !c.locked } : c)) })),
 
@@ -174,6 +189,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         name: '新角色',
         description: '请填写角色描述',
         locked: false,
+        ...DEFAULT_CHARACTER_IMAGE_SETTINGS,
       }],
     })),
 
@@ -187,6 +203,9 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   updateSceneImage: (id, imageUrl) =>
     set((s) => ({ scenes: s.scenes.map((c) => (c.id === id ? { ...c, imageUrl } : c)) })),
 
+  updateSceneImageSetting: (id, field, value) =>
+    set((s) => ({ scenes: s.scenes.map((c) => (c.id === id ? { ...c, [field]: value } : c)) })),
+
   toggleSceneLock: (id) =>
     set((s) => ({ scenes: s.scenes.map((c) => (c.id === id ? { ...c, locked: !c.locked } : c)) })),
 
@@ -197,6 +216,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         name: '新场景',
         description: '请填写场景描述',
         locked: false,
+        ...DEFAULT_SCENE_IMAGE_SETTINGS,
       }],
     })),
 
@@ -317,6 +337,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         item.name,
         item.description,
         item.consistencyPrompt,
+        { aspectRatio: item.imageAspectRatio, imageSize: item.imageSize },
       )
 
       if (type === 'character') {

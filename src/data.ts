@@ -68,10 +68,27 @@ export const buildServerStates = (stageId: StageId, aiStatus: 'idle' | 'generati
         ? 'active'
         : 'idle'
 
+  const isRenderBusy = aiStatus === 'generating' && stageId === 2
+  const renderStatus = isRenderBusy
+    ? 'Gemini Image Generating…'
+    : stageId >= 4
+      ? 'Rendering / Previz'
+      : stageId === 2
+        ? 'Concept Image Ready'
+        : 'Idle'
+
+  const renderTone: ServerState['tone'] = isRenderBusy
+    ? 'active'
+    : aiStatus === 'error' && stageId === 2
+      ? 'warning'
+      : activeMap[stageId].includes('render')
+        ? 'active'
+        : 'idle'
+
   return [
     { key: 'memory', title: 'Script & Memory', meta: 'Database / Vector', status: 'Ground Truth Sync', tone: activeMap[stageId].includes('memory') ? 'active' : 'idle' },
     { key: 'prompt', title: 'Prompt Engineering', meta: 'GPT-5.4 / Comfy JSON', status: promptStatus, tone: promptTone },
-    { key: 'render', title: 'Render & Synthesis', meta: 'Flash API / RunningHub', status: stageId >= 4 ? 'Rendering / Previz' : 'Idle', tone: activeMap[stageId].includes('render') ? 'active' : 'idle' },
+    { key: 'render', title: 'Render & Synthesis', meta: 'Gemini Image / RunningHub', status: renderStatus, tone: renderTone },
     { key: 'vision', title: 'Consistency Vision', meta: 'Vision Verifier', status: stageId >= 4 ? 'Continuity Check' : 'Idle', tone: activeMap[stageId].includes('vision') ? 'active' : 'idle' },
   ]
 }
