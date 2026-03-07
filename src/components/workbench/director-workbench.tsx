@@ -384,6 +384,7 @@ function ConceptStage() {
   const removeScene = useWorkbenchStore((s) => s.removeScene)
 
   const runConsistencyAI = useWorkbenchStore((s) => s.runConsistencyAI)
+  const runImageGenAI = useWorkbenchStore((s) => s.runImageGenAI)
 
   const isGenerating = aiStatus === 'generating'
 
@@ -411,6 +412,7 @@ function ConceptStage() {
               onToggleLock={() => toggleCharacterLock(char.id)}
               onRemove={() => removeCharacter(char.id)}
               onRunAI={() => runConsistencyAI('character', char.id)}
+              onRunImageGen={() => runImageGenAI('character', char.id)}
               isGenerating={isGenerating}
             />
           ))}
@@ -431,6 +433,7 @@ function ConceptStage() {
               onToggleLock={() => toggleSceneLock(scene.id)}
               onRemove={() => removeScene(scene.id)}
               onRunAI={() => runConsistencyAI('scene', scene.id)}
+              onRunImageGen={() => runImageGenAI('scene', scene.id)}
               isGenerating={isGenerating}
             />
           ))}
@@ -453,10 +456,11 @@ interface DesignSlotProps {
   onToggleLock: () => void
   onRemove: () => void
   onRunAI: () => void
+  onRunImageGen: () => void
   isGenerating: boolean
 }
 
-function DesignSlot({ item, type, onUpdateField, onUpdateImage, onToggleLock, onRemove, onRunAI, isGenerating }: DesignSlotProps) {
+function DesignSlot({ item, type, onUpdateField, onUpdateImage, onToggleLock, onRemove, onRunAI, onRunImageGen, isGenerating }: DesignSlotProps) {
   const handleFileUpload = (file: File) => {
     if (!file.type.startsWith('image/')) return
     onUpdateImage(URL.createObjectURL(file))
@@ -494,6 +498,7 @@ function DesignSlot({ item, type, onUpdateField, onUpdateImage, onToggleLock, on
             <div className="flex size-full flex-col items-center justify-center gap-2 text-slate-500">
               <Sparkles className="size-6 opacity-40" />
               <span className="text-xs">上传{typeLabel}参考图</span>
+              <span className="text-[10px] text-slate-600">或使用下方 AI 生成</span>
             </div>
           )}
         </label>
@@ -537,6 +542,20 @@ function DesignSlot({ item, type, onUpdateField, onUpdateImage, onToggleLock, on
 
           {/* Actions */}
           <div className="mt-auto flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onRunImageGen}
+              disabled={isGenerating}
+              className="text-xs"
+            >
+              {isGenerating ? (
+                <Loader2 className="mr-1 size-3 animate-spin" />
+              ) : (
+                <WandSparkles className="mr-1 size-3" />
+              )}
+              AI 生成概念图
+            </Button>
             <Button
               variant="secondary"
               size="sm"

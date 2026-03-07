@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 import { buildServerStates, initialBible, initialLogs, initialScript, initialShotSpecs, outputFrames, workflowStages } from '@/data'
 import type { AiStatus, CharacterDesign, LogEntry, ProjectBible, SceneDesign, ShotSpec, StageId } from '@/types'
-import { orchestrateStage1, orchestrateStage2Consistency, orchestrateStage3 } from '@/services/orchestrator'
+import { orchestrateStage1, orchestrateStage2Consistency, orchestrateStage3, generateDesignImage } from '@/services/orchestrator'
 
 // ---------------------------------------------------------------------------
 // Initial character / scene data (extracted from the user's script)
@@ -72,6 +72,7 @@ interface WorkbenchState {
   // Actions — AI
   runStageAI: (stageId: StageId) => Promise<void>
   runConsistencyAI: (type: 'character' | 'scene', id: string) => Promise<void>
+  runImageGenAI: (type: 'character' | 'scene', id: string) => Promise<void>
   clearAiError: () => void
 
   // Actions — 日志
@@ -294,6 +295,50 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
       const message = (err as Error).message || '未知错误'
       set({ aiStatus: 'error', aiError: message })
       get().appendLog('error', `一致性描述生成失败：${message}`)
+    }
+  },
+
+  /** 对单个角色/场景触发 AI 概念图生成 */
+  runImageGenAI: async (type, id) => {
+    const state = get()
+    const item = type === 'character'
+      ? state.characters.find((c) => c.id === id)
+      : state.scenes.find((s) => s.id === id)
+
+    if (!item) return
+
+    set({ aiStatus: 'generating', aiError: null })
+    get().appendLog('info', `正在为${type === 'character' ? '角色' : '场景'}「${item.name}」生成概念图…`)
+
+    try {
+      const result = await generateDesignImage(
+        state.projectBible,
+        type,
+        item.name,
+        item.description,
+        item.consistencyPrompt,
+      )
+
+      if (type === 'character') {
+        set((s) => ({
+          aiStatus: 'idle',
+          characters: s.characters.map((c) =>
+            c.id === id ? { ...c, imageUrl: result.imageUrl } : c,
+          ),
+        }))
+      } else {
+        set((s) => ({
+          aiStatus: 'idle',
+          scenes: s.scenes.map((sc) =>
+            sc.id === id ? { ...sc, imageUrl: result.imageUrl } : sc,
+          ),
+        }))
+      }
+      get().appendLog('success', `「${item.name}」概念图已生成。`)
+    } catch (err) {
+      const message = (err as Error).message || '未知错误'
+      set({ aiStatus: 'error', aiError: message })
+      get().appendLog('error', `概念图生成失败：${message}`)
     }
   },
 

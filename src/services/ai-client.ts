@@ -44,6 +44,7 @@ export interface AiRequestOptions {
 
 export interface AiResponse {
   content: string
+  imageUrls?: string[]
   usage?: { input_tokens: number; output_tokens: number }
 }
 
@@ -120,6 +121,29 @@ export async function sendPrompt(
 }
 
 // ---------------------------------------------------------------------------
+// Image generation — sendImagePrompt
+// ---------------------------------------------------------------------------
+
+/**
+ * 向 GPT-5.4 发送图像生成请求。
+ * 模型会在 output 中返回 output_image 类型的内容。
+ */
+export async function sendImagePrompt(
+  prompt: string,
+  options: AiRequestOptions = {},
+): Promise<AiResponse> {
+  return sendPrompt(
+    [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+    { timeoutMs: 120_000, temperature: 0.8, ...options },
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Request builders
 // ---------------------------------------------------------------------------
 
@@ -191,6 +215,8 @@ function parseResponsesApiResult(data: Record<string, unknown>): AiResponse {
   }
 
   let content = ''
+  const imageUrls: string[] = []
+
   for (const item of output) {
     if (item.type === 'message') {
       const contentArr = item.content as Array<Record<string, unknown>> | undefined
@@ -198,6 +224,18 @@ function parseResponsesApiResult(data: Record<string, unknown>): AiResponse {
         for (const c of contentArr) {
           if (c.type === 'output_text' && typeof c.text === 'string') {
             content += c.text
+          } else if (c.type === 'output_image') {
+            // base64 格式图片
+            if (typeof c.image_url === 'string') {
+              imageUrls.push(c.image_url)
+            } else if (typeof c.url === 'string') {
+              imageUrls.push(c.url)
+            }
+            // 内联 base64
+            const b64 = (c.image as string) || (c.b64_json as string)
+            if (b64) {
+              imageUrls.push(`data:image/png;base64,${b64}`)
+            }
           }
         }
       }
@@ -205,13 +243,14 @@ function parseResponsesApiResult(data: Record<string, unknown>): AiResponse {
   }
 
   // Fallback: chat completions 格式
-  if (!content) {
+  if (!content && imageUrls.length === 0) {
     return parseChatResult(data)
   }
 
   const usage = data.usage as { input_tokens?: number; output_tokens?: number } | undefined
   return {
     content,
+    imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
     usage: usage
       ? { input_tokens: usage.input_tokens ?? 0, output_tokens: usage.output_tokens ?? 0 }
       : undefined,

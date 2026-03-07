@@ -6,7 +6,7 @@
  */
 
 import type { AiMessage } from './ai-client'
-import { sendPrompt } from './ai-client'
+import { sendPrompt, sendImagePrompt } from './ai-client'
 import type { ProjectBible, ShotSpec } from '@/types'
 
 // ---------------------------------------------------------------------------
@@ -226,12 +226,51 @@ export async function orchestrateStage2Consistency(
   return { consistencyPrompt: response.content.trim() }
 }
 
-/** Stage 4: 灰模预演需要渲染管线，后续接入 */
-export async function orchestrateStage4(): Promise<void> {
-  // 需要渲染管线，后续接入
+// ---------------------------------------------------------------------------
+// Stage 2 — AI 概念图生成
+// ---------------------------------------------------------------------------
+
+export interface ImageGenResult {
+  imageUrl: string
 }
 
-/** Stage 5: 终版签发为人类动作，无需 AI */
-export async function orchestrateStage5(): Promise<void> {
-  // 人类签发阶段，无 AI 调用
+export async function generateDesignImage(
+  bible: ProjectBible,
+  type: 'character' | 'scene',
+  name: string,
+  description: string,
+  consistencyPrompt?: string,
+): Promise<ImageGenResult> {
+  const typeLabel = type === 'character' ? '角色' : '场景'
+  const visualRef = consistencyPrompt
+    ? `\n\n一致性视觉描述参考：${consistencyPrompt}`
+    : ''
+
+  const prompt = [
+    `请为以下${typeLabel}生成一张高质量的概念设计图：`,
+    '',
+    `${typeLabel}名称：${name}`,
+    `${typeLabel}描述：${description}`,
+    '',
+    `风格要求：${bible.style}`,
+    `色彩基调：${bible.colorScript}`,
+    `禁忌规则：${bible.forbidden}`,
+    visualRef,
+    '',
+    `要求：`,
+    `- 画面风格严格遵循上述风格要求`,
+    `- 构图清晰，主体突出`,
+    type === 'character'
+      ? '- 角色正面或3/4侧面，展示完整服饰和体态特征'
+      : '- 场景广角展示，包含典型光照和氛围',
+    `- 适合作为影视分镜的参考概念设定图`,
+  ].join('\n')
+
+  const response = await sendImagePrompt(prompt, { timeoutMs: 120_000 })
+
+  if (response.imageUrls && response.imageUrls.length > 0) {
+    return { imageUrl: response.imageUrls[0] }
+  }
+
+  throw new Error(`GPT-5.4 未返回图片。文本回复：${response.content.slice(0, 100)}`)
 }
