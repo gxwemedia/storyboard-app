@@ -57,7 +57,18 @@ export function V2App() {
   const isGenerating = aiStatus === 'generating'
 
   const handleApprove = async () => {
-    await approveCurrentStage()
+    try {
+      const result = await approveCurrentStage()
+      
+      if (result.archived) {
+        console.log('项目已完成并归档')
+      } else {
+        console.log(`已推进到阶段 ${result.to}`)
+      }
+    } catch (error) {
+      console.error('推进阶段失败:', error)
+      alert(`推进失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    }
   }
 
   const handleReject = () => {

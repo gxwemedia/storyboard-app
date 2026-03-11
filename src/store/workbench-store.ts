@@ -253,6 +253,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
 
     // Stage 0 / 2 / 5 无全阶段 AI 调用
     if (stageId === 0 || stageId === 2 || stageId === 5) {
+      console.log(`Stage ${stageId} 不需要AI调用`)
       return
     }
 
@@ -291,8 +292,10 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
       }
     } catch (err) {
       const message = (err as Error).message || '未知错误'
+      console.error('runStageAI error:', err)
       set({ aiStatus: 'error', aiError: message })
       get().appendLog('error', `AI 调用失败：${message}`)
+      throw err // 重新抛出错误，让调用者也能捕获
     }
   },
 

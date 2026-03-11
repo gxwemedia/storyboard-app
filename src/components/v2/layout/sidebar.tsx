@@ -2,6 +2,7 @@ import React from 'react'
 import { workflowStages } from '@/data'
 import { getStageStatus } from '@/store/workbench-store'
 import { StatusDot } from '../common/status-dot'
+import { Badge } from '../common/badge'
 
 interface SidebarProps {
   workflowStageId: number

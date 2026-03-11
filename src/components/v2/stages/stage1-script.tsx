@@ -63,7 +63,7 @@ export function Stage1Script({
             className="form-textarea"
             value={expandedScript}
             onChange={(e) => onUpdateExpanded(e.target.value)}
-            placeholder="点击"AI 扩写"按钮生成剧情扩写，或直接在此编辑..."
+            placeholder="点击「AI 扩写」按钮生成剧情扩写，或直接在此编辑..."
             rows={10}
           />
           {expandedScript && (
