@@ -110,6 +110,24 @@ export function Stage2Concept({
                 />
               </div>
 
+              {char.imageUrl && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <label className="form-label">概念图预览</label>
+                  <div style={{ 
+                    borderRadius: '0.5rem',
+                    overflow: 'hidden',
+                    border: '1px solid var(--color-border-subtle)',
+                    maxHeight: '300px'
+                  }}>
+                    <img 
+                      src={char.imageUrl} 
+                      alt={char.name}
+                      style={{ width: '100%', height: 'auto', display: 'block' }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-subtle)' }}>
                 <label className="form-label">图片生成设置</label>
                 <div className="flex gap-4" style={{ marginBottom: '1rem' }}>
@@ -239,6 +257,24 @@ export function Stage2Concept({
                   rows={3}
                 />
               </div>
+
+              {scene.imageUrl && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <label className="form-label">概念图预览</label>
+                  <div style={{ 
+                    borderRadius: '0.5rem',
+                    overflow: 'hidden',
+                    border: '1px solid var(--color-border-subtle)',
+                    maxHeight: '300px'
+                  }}>
+                    <img 
+                      src={scene.imageUrl} 
+                      alt={scene.name}
+                      style={{ width: '100%', height: 'auto', display: 'block' }}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-subtle)' }}>
                 <label className="form-label">图片生成设置</label>

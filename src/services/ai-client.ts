@@ -30,7 +30,7 @@ const getConfig = () => {
     baseUrl: isDev ? '/api/ai' : remoteUrl,
     apiKey: (import.meta.env.VITE_AI_API_KEY as string) || '',
     model: (import.meta.env.VITE_AI_MODEL as string) || 'gpt-5.4',
-    wireApi: ((import.meta.env.VITE_AI_WIRE_API as string) || 'chat') as WireApi,
+    wireApi: ((import.meta.env.VITE_AI_WIRE_API as string) || 'responses') as WireApi,  // 默认使用 responses 模式
   }
 }
 
