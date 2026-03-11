@@ -8,6 +8,7 @@
 import type { AiMessage } from './ai-client'
 import { sendPrompt, sendImagePrompt } from './ai-client'
 import type { ImageGenSettings, ProjectBible, ShotSpec } from '@/types'
+import { generateGrayModel, generateGrayModelMock, type GrayModelStyle, type GrayModelResult } from './sdxl-client'
 
 // ---------------------------------------------------------------------------
 // Stage 1 — 剧本扩写 (Script & Emotion Expansion)
@@ -278,4 +279,82 @@ export async function generateDesignImage(
   }
 
   throw new Error(`Gemini 未返回图片。文本回复：${response.content.slice(0, 100)}`)
+}
+
+// ---------------------------------------------------------------------------
+// Stage 4 — 灰模预演 (Gray Model Preview)
+// ---------------------------------------------------------------------------
+
+/** 灰模预演结果 */
+export interface GrayModelStageResult {
+  shotSpecs: ShotSpec[]
+  grayModels: Record<string, GrayModelResult>  // shotId -> grayModel
+}
+
+/**
+ * 为所有ShotSpec生成灰模预演
+ */
+export async function orchestrateStage4(
+  bible: ProjectBible,
+  shotSpecs: ShotSpec[],
+  style: GrayModelStyle = 'grayscale',
+  useMock: boolean = false
+): Promise<GrayModelStageResult> {
+  const grayModels: Record<string, GrayModelResult> = {}
+
+  for (const shotSpec of shotSpecs) {
+    try {
+      let result: GrayModelResult
+
+      if (useMock) {
+        // 使用模拟生成（开发/测试用）
+        result = await generateGrayModelMock(shotSpec, bible, {
+          style,
+          aspectRatio: '16:9',
+          imageSize: '1K',
+        })
+      } else {
+        // 实际调用SDXL-Turbo
+        result = await generateGrayModel(shotSpec, bible, {
+          style,
+          aspectRatio: '16:9',
+          imageSize: '1K',
+        })
+      }
+
+      grayModels[shotSpec.id] = result
+    } catch (error) {
+      console.error(`灰模生成失败 (${shotSpec.shotCode}):`, error)
+      // 继续处理下一个，不中断
+    }
+  }
+
+  return {
+    shotSpecs,
+    grayModels,
+  }
+}
+
+/**
+ * 为单个ShotSpec生成灰模预演
+ */
+export async function orchestrateStage4Single(
+  bible: ProjectBible,
+  shotSpec: ShotSpec,
+  style: GrayModelStyle = 'grayscale',
+  useMock: boolean = false
+): Promise<GrayModelResult> {
+  if (useMock) {
+    return generateGrayModelMock(shotSpec, bible, {
+      style,
+      aspectRatio: '16:9',
+      imageSize: '1K',
+    })
+  }
+
+  return generateGrayModel(shotSpec, bible, {
+    style,
+    aspectRatio: '16:9',
+    imageSize: '1K',
+  })
 }

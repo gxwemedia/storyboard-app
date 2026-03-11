@@ -2,7 +2,9 @@ import { create } from 'zustand'
 
 import { buildServerStates, initialBible, initialLogs, initialScript, initialShotSpecs, outputFrames, workflowStages } from '@/data'
 import type { AiStatus, CharacterDesign, ImageAspectRatio, ImageSize, LogEntry, ProjectBible, SceneDesign, ShotSpec, StageId } from '@/types'
-import { orchestrateStage1, orchestrateStage2Consistency, orchestrateStage3, generateDesignImage } from '@/services/orchestrator'
+import { orchestrateStage1, orchestrateStage2Consistency, orchestrateStage3, generateDesignImage, orchestrateStage4 } from '@/services/orchestrator'
+import type { GrayModelStyle } from '@/services/sdxl-client'
+import { useLineageStore, trackAssetGeneration, linkAssetDependency } from '@/store/lineage-store'
 
 // ---------------------------------------------------------------------------
 // Initial character / scene data (extracted from the user's script)
@@ -50,6 +52,11 @@ interface WorkbenchState {
   logs: LogEntry[]
   outputs: typeof outputFrames
 
+  // Stage 4: 灰模预演
+  grayModels: Record<string, string>  // shotId -> imageUrl
+  grayModelStyle: GrayModelStyle
+  grayModelGenerating: boolean
+
   // AI 异步状态
   aiStatus: AiStatus
   aiError: string | null
@@ -87,6 +94,11 @@ interface WorkbenchState {
   runImageGenAI: (type: 'character' | 'scene', id: string) => Promise<void>
   clearAiError: () => void
 
+  // Actions — Stage 4 灰模
+  setGrayModelStyle: (style: GrayModelStyle) => void
+  runGrayModelGen: (shotId?: string) => Promise<void>
+  updateGrayModel: (shotId: string, imageUrl: string) => void
+
   // Actions — 日志
   appendLog: (kind: LogEntry['kind'], message: string) => void
 }
@@ -115,6 +127,9 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   finalNotes: '终版通过，可归档并导出 ShotSpec JSON、PDF 剧本集与交付资产包。',
   logs: initialLogs,
   outputs: outputFrames,
+  grayModels: {},
+  grayModelStyle: 'grayscale',
+  grayModelGenerating: false,
   aiStatus: 'idle',
   aiError: null,
 
@@ -236,8 +251,14 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   runStageAI: async (stageId: StageId) => {
     const state = get()
 
-    // Stage 0 / 2 / 4 / 5 无全阶段 AI 调用
-    if (stageId === 0 || stageId === 2 || stageId === 4 || stageId === 5) {
+    // Stage 0 / 2 / 5 无全阶段 AI 调用
+    if (stageId === 0 || stageId === 2 || stageId === 5) {
+      return
+    }
+
+    // Stage 4: 灰模预演
+    if (stageId === 4) {
+      await get().runGrayModelGen()
       return
     }
 
@@ -295,6 +316,23 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         item.description,
       )
 
+      // 查找或创建一致性描述的资产节点
+      const lineageStore = useLineageStore.getState()
+      const existingNodes = lineageStore.getNodesByReference(id)
+      let consistencyNodeId: string | undefined
+      
+      // 如果已经存在概念图节点，建立关联
+      const existingImageNode = existingNodes.find(n => 
+        (type === 'character' && n.type === 'character_image') ||
+        (type === 'scene' && n.type === 'scene_image')
+      )
+      
+      if (existingImageNode) {
+        // 已有概念图，建立一致性描述与概念图的依赖关系
+        // 一致性描述节点作为源，概念图作为目标
+        consistencyNodeId = existingImageNode.id
+      }
+
       if (type === 'character') {
         set((s) => ({
           aiStatus: 'idle',
@@ -311,6 +349,16 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         }))
       }
       get().appendLog('success', `「${item.name}」一致性描述已生成。`)
+      
+      // 如果有概念图，建立血缘关系
+      if (existingImageNode && consistencyNodeId) {
+        linkAssetDependency(
+          id,  // 一致性描述以角色/场景ID为标识
+          consistencyNodeId,
+          'consistency_locked',
+          `一致性描述锁定${type === 'character' ? '角色' : '场景'}外观`
+        )
+      }
     } catch (err) {
       const message = (err as Error).message || '未知错误'
       set({ aiStatus: 'error', aiError: message })
@@ -340,6 +388,38 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         { aspectRatio: item.imageAspectRatio, imageSize: item.imageSize },
       )
 
+      // 构建Prompt用于追踪
+      const prompt = [
+        `${type === 'character' ? '角色' : '场景'}名称：${item.name}`,
+        `${type === 'character' ? '角色' : '场景'}描述：${item.description}`,
+        `风格要求：${state.projectBible.style}`,
+        `色彩基调：${state.projectBible.colorScript}`,
+      ].join('\n')
+
+      // 追踪资产生成
+      const assetId = trackAssetGeneration(
+        type === 'character' ? 'character_image' : 'scene_image',
+        id,  // 引用ID
+        2,   // Stage 2: 概念设定
+        result.imageUrl,
+        {
+          prompt,
+          model: 'gemini-3.1-flash',
+          aspectRatio: item.imageAspectRatio,
+          imageSize: item.imageSize,
+        }
+      )
+
+      // 如果有一致性描述，建立血缘关系
+      if (item.consistencyPrompt) {
+        linkAssetDependency(
+          id,  // 角色/场景ID作为一致性描述的引用
+          assetId,
+          'consistency_locked',
+          `概念图锁定于${type === 'character' ? '角色' : '场景'}一致性描述`
+        )
+      }
+
       if (type === 'character') {
         set((s) => ({
           aiStatus: 'idle',
@@ -356,6 +436,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         }))
       }
       get().appendLog('success', `「${item.name}」概念图已生成。`)
+      get().appendLog('system', `资产已追踪: ${assetId}`)
     } catch (err) {
       const message = (err as Error).message || '未知错误'
       set({ aiStatus: 'error', aiError: message })
@@ -364,6 +445,86 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   },
 
   clearAiError: () => set({ aiStatus: 'idle', aiError: null }),
+
+  // ---- Stage 4 灰模 actions ----
+
+  setGrayModelStyle: (style) => set({ grayModelStyle: style }),
+
+  runGrayModelGen: async (shotId?: string) => {
+    const state = get()
+    
+    // 检查是否已配置SDXL（通过环境变量判断）
+    const hasSDXLConfig = !!(import.meta.env.VITE_SDXL_API_KEY || import.meta.env.DEV)
+    const useMock = !hasSDXLConfig
+
+    // 获取要生成的shot列表
+    const targetShots = shotId 
+      ? state.shotSpecs.filter(s => s.id === shotId)
+      : state.shotSpecs
+
+    if (targetShots.length === 0) {
+      get().appendLog('warning', '没有可生成灰模的镜头')
+      return
+    }
+
+    set({ grayModelGenerating: true, aiStatus: 'generating', aiError: null })
+    get().appendLog('info', `正在生成灰模预演（${useMock ? '模拟模式' : 'SDXL-Turbo'}）…`)
+
+    try {
+      const result = await orchestrateStage4(
+        state.projectBible,
+        targetShots,
+        state.grayModelStyle,
+        useMock
+      )
+
+      // 更新灰模状态并追踪血缘
+      const newGrayModels = { ...state.grayModels }
+      
+      for (const shotSpec of targetShots) {
+        const grayModel = result.grayModels[shotSpec.id]
+        if (grayModel) {
+          newGrayModels[shotSpec.id] = grayModel.imageUrl
+          
+          // 追踪资产生成
+          const assetId = trackAssetGeneration(
+            'gray_model',
+            shotSpec.id,
+            4,  // Stage 4
+            grayModel.imageUrl,
+            {
+              prompt: shotSpec.description,
+              model: useMock ? 'mock-sdxl' : 'sdxl-turbo',
+              aspectRatio: '16:9',
+              imageSize: '1K',
+              seed: grayModel.seed,
+            }
+          )
+
+          // 建立与ShotSpec的依赖关系
+          linkAssetDependency(
+            shotSpec.id,
+            assetId,
+            'derived_from',
+            `灰模衍生自ShotSpec`
+          )
+        }
+      }
+
+      set({ grayModels: newGrayModels, grayModelGenerating: false, aiStatus: 'idle' })
+      get().appendLog('success', `灰模预演生成完成（共${Object.keys(result.grayModels).length}个）`)
+    } catch (err) {
+      const message = (err as Error).message || '未知错误'
+      set({ grayModelGenerating: false, aiStatus: 'error', aiError: message })
+      get().appendLog('error', `灰模生成失败：${message}`)
+    }
+  },
+
+  updateGrayModel: (shotId, imageUrl) => {
+    set((state) => ({
+      grayModels: { ...state.grayModels, [shotId]: imageUrl },
+    }))
+  },
 
   // ---- Log action ----
 
