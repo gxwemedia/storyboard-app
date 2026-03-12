@@ -1,6 +1,7 @@
 ---
 name: realistic-drama
 description: 写实/现代都市/家庭剧类分镜的视觉设计专家，擅长自然光影和生活化构图
+category: concept
 ---
 
 # 写实剧情视觉设计专家

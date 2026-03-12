@@ -2,6 +2,7 @@ import React from 'react'
 import type { ProjectBible } from '@/types'
 import { SectionCard } from '../common/section-card'
 import { InputField } from '../common/input-field'
+import { SkillSelector } from '../skill-selector'
 
 interface Stage0BibleProps {
   bible: ProjectBible
@@ -81,6 +82,9 @@ export function Stage0Bible({ bible, onUpdate }: Stage0BibleProps) {
           </p>
         </div>
       </SectionCard>
+
+      {/* 技能包选择器 */}
+      <SkillSelector styleHint={bible.style} />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 ---
 name: suspense-cinematography
 description: 悬疑惊悚类分镜的视觉设计专家，擅长暗调光影、压迫构图和碎片化叙事
+category: concept
 ---
 
 # 悬疑分镜视觉设计专家

@@ -1,6 +1,7 @@
 ---
 name: epic-fantasy-visual
 description: 史诗奇幻/魔法世界类分镜的视觉设计专家，擅长壮丽场景和戏剧性光影
+category: shotspec
 ---
 
 # 史诗奇幻视觉设计专家

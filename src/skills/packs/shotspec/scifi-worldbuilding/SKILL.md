@@ -1,6 +1,7 @@
 ---
 name: scifi-worldbuilding
 description: 科幻/赛博朋克类分镜的世界观构建和视觉设计专家
+category: shotspec
 ---
 
 # 科幻世界观视觉设计专家
