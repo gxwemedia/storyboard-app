@@ -33,6 +33,10 @@ export interface ConceptReference {
   imageUrl?: string
 }
 
+export type ShotScale = 'EWS' | 'WS' | 'MWS' | 'MS' | 'MCU' | 'CU' | 'ECU'
+export type KeyLightStyle = 'Rembrandt' | 'Butterfly' | 'Loop' | 'Split' | 'Broad' | 'Backlit' | 'Natural'
+export type LensFocalLength = '14mm' | '24mm' | '35mm' | '50mm' | '85mm' | '135mm' | '200mm'
+
 export interface ShotSpec {
   id: string
   shotCode: string
@@ -40,6 +44,12 @@ export interface ShotSpec {
   lens: string
   composition: string
   emotion: string
+  // V6 结构化字段
+  scale: ShotScale
+  focalLength: LensFocalLength
+  keyLight: KeyLightStyle
+  axisAnchor: string
+  continuityLock: string
 }
 
 export interface OutputFrame {

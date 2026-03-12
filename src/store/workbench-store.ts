@@ -85,7 +85,7 @@ interface WorkbenchState {
   addScene: () => void
   removeScene: (id: string) => void
   // ShotSpec
-  updateShot: (id: string, field: keyof Pick<ShotSpec, 'description' | 'lens' | 'composition' | 'emotion'>, value: string) => void
+  updateShot: (id: string, field: keyof Pick<ShotSpec, 'description' | 'lens' | 'composition' | 'emotion' | 'scale' | 'focalLength' | 'keyLight' | 'axisAnchor' | 'continuityLock'>, value: string) => void
   updateFinalNotes: (value: string) => void
 
   // Actions — AI

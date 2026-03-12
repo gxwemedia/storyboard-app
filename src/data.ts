@@ -24,8 +24,8 @@ export const conceptReferences: ConceptReference[] = [
 ]
 
 export const initialShotSpecs: ShotSpec[] = [
-  { id: 'shot-01', shotCode: 'S01', description: '亚瑟手持火把步入洞穴，肩背僵硬，视线被前方黑暗吸走。', lens: '24mm 广角 / 过肩镜头 / 机位略低于肩线', composition: 'OTS，前景保留火把与岩壁切面，突出人物渺小感。', emotion: '警觉、克制、强压迫感' },
-  { id: 'shot-02', shotCode: 'S02', description: '火光扫过远处巨龙鳞片，只露出一只反光龙眼与半截头骨轮廓。', lens: '135mm 长焦 / 极近特写 / 焦点压在龙眼高光', composition: '画面几乎只保留龙眼与热雾边缘，背景全部压暗。', emotion: '威压、不可知、猎物被注视' },
+  { id: 'shot-01', shotCode: 'S01', description: '亚瑟手持火把步入洞穴，肩背僵硬，视线被前方黑暗吸走。', lens: '24mm 广角 / 过肩镜头 / 机位略低于肩线', composition: 'OTS，前景保留火把与岩壁切面，突出人物渺小感。', emotion: '警觉、克制、强压迫感', scale: 'WS', focalLength: '24mm', keyLight: 'Backlit', axisAnchor: '以亚瑟肩线为轴线基准', continuityLock: '' },
+  { id: 'shot-02', shotCode: 'S02', description: '火光扫过远处巨龙鳞片，只露出一只反光龙眼与半截头骨轮廓。', lens: '135mm 长焦 / 极近特写 / 焦点压在龙眼高光', composition: '画面几乎只保留龙眼与热雾边缘，背景全部压暗。', emotion: '威压、不可知、猎物被注视', scale: 'ECU', focalLength: '135mm', keyLight: 'Rembrandt', axisAnchor: '', continuityLock: '与上一镜保持洞穴同一空间方向' },
 ]
 
 export const outputFrames: OutputFrame[] = [
