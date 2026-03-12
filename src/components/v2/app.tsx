@@ -263,18 +263,18 @@ export function V2App() {
           </div>
         </div>
       </div>
+
+      {/* 错误查看器 */}
+      {showErrorDetails && error && (
+        <ErrorViewer 
+          error={error} 
+          title="AI 调用失败 - 详细错误信息"
+          onClose={() => {
+            setShowErrorDetails(false)
+            setError(null)
+          }}
+        />
+      )}
     </div>
-    
-    {/* 错误查看器 */}
-    {showErrorDetails && error && (
-      <ErrorViewer 
-        error={error} 
-        title="AI 调用失败 - 详细错误信息"
-        onClose={() => {
-          setShowErrorDetails(false)
-          setError(null)
-        }}
-      />
-    )}
   )
 }

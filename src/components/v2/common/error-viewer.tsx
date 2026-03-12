@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { AlertTriangle, X, Copy, ExternalLink } from 'lucide-react'
 import { Button } from './button'
 
 interface ErrorViewerProps {
@@ -100,14 +99,28 @@ VITE_AI_WIRE_API=responses
             color: 'var(--color-text-secondary)',
             padding: '0.5rem',
             borderRadius: '0.5rem',
+            fontSize: '1.5rem',
           }}
           aria-label="关闭"
         >
-          <X size={20} />
+          ✕
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-          <AlertTriangle size={32} color="var(--color-status-error)" />
+          <div style={{
+            width: '32px',
+            height: '32px',
+            backgroundColor: 'var(--color-status-error)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '18px',
+          }}>
+            !
+          </div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '600', margin: 0 }}>{title}</h2>
         </div>
 
@@ -188,8 +201,7 @@ VITE_AI_WIRE_API=responses
             onClick={copyToClipboard}
             style={{ flex: '1 1 auto' }}
           >
-            <Copy size={16} style={{ marginRight: '0.5rem' }} />
-            {copied ? '已复制' : '复制错误信息'}
+            📋 {copied ? '已复制' : '复制错误信息'}
           </Button>
 
           <Button
@@ -198,8 +210,7 @@ VITE_AI_WIRE_API=responses
             onClick={openInNewTab}
             style={{ flex: '1 1 auto' }}
           >
-            <ExternalLink size={16} style={{ marginRight: '0.5rem' }} />
-            在新标签页打开
+            🔗 在新标签页打开
           </Button>
 
           <Button
