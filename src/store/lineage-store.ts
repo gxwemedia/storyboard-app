@@ -70,6 +70,11 @@ interface LineageState {
   getLineageChain: (assetId: string) => LineageChain | null
   getAllDependencies: (assetId: string) => Map<string, AssetNode[]>
   
+  // Actions — 失效标记
+  invalidateSubtree: (assetId: string) => string[]
+  validateNode: (assetId: string) => void
+  getStaleNodes: () => AssetNode[]
+  
   // Actions — 影响分析
   analyzeImpact: (assetId: string, maxDepth?: number) => ImpactReport
   
@@ -143,6 +148,7 @@ export const useLineageStore = create<LineageState>()(
         id,
         generatedAt: now,
         version,
+        stale: false,
       }
       
       set((state) => {
@@ -341,8 +347,8 @@ export const useLineageStore = create<LineageState>()(
       ])
       
       allKeys.forEach((key) => {
-        const oldValue = (oldParams as Record<string, unknown>)[key]
-        const newValue = (newParams as Record<string, unknown>)[key]
+        const oldValue = (oldParams as unknown as Record<string, unknown>)[key]
+        const newValue = (newParams as unknown as Record<string, unknown>)[key]
         if (oldValue !== newValue) {
           paramChanges.push({ field: key, oldValue, newValue })
         }
@@ -377,42 +383,50 @@ export const useLineageStore = create<LineageState>()(
     
     // ---- Lineage queries ----
     
-    getAncestors: (assetId, visited = new Set<string>()): AssetNode[] => {
-      if (visited.has(assetId)) return []
-      visited.add(assetId)
-      
+    getAncestors: (assetId): AssetNode[] => {
+      const visited = new Set<string>()
       const state = get()
-      const inEdges = state.inEdges.get(assetId) || []
-      const ancestors: AssetNode[] = []
       
-      for (const edge of inEdges) {
-        const sourceNode = state.nodeMap.get(edge.sourceId)
-        if (sourceNode) {
-          ancestors.push(sourceNode)
-          ancestors.push(...get().getAncestors(edge.sourceId, visited))
+      const collect = (id: string): AssetNode[] => {
+        if (visited.has(id)) return []
+        visited.add(id)
+        
+        const edges = state.inEdges.get(id) || []
+        const result: AssetNode[] = []
+        for (const edge of edges) {
+          const sourceNode = state.nodeMap.get(edge.sourceId)
+          if (sourceNode) {
+            result.push(sourceNode)
+            result.push(...collect(edge.sourceId))
+          }
         }
+        return result
       }
       
-      return ancestors
+      return collect(assetId)
     },
     
-    getDescendants: (assetId, visited = new Set<string>()): AssetNode[] => {
-      if (visited.has(assetId)) return []
-      visited.add(assetId)
-      
+    getDescendants: (assetId): AssetNode[] => {
+      const visited = new Set<string>()
       const state = get()
-      const outEdges = state.outEdges.get(assetId) || []
-      const descendants: AssetNode[] = []
       
-      for (const edge of outEdges) {
-        const targetNode = state.nodeMap.get(edge.targetId)
-        if (targetNode) {
-          descendants.push(targetNode)
-          descendants.push(...get().getDescendants(edge.targetId, visited))
+      const collect = (id: string): AssetNode[] => {
+        if (visited.has(id)) return []
+        visited.add(id)
+        
+        const edges = state.outEdges.get(id) || []
+        const result: AssetNode[] = []
+        for (const edge of edges) {
+          const targetNode = state.nodeMap.get(edge.targetId)
+          if (targetNode) {
+            result.push(targetNode)
+            result.push(...collect(edge.targetId))
+          }
         }
+        return result
       }
       
-      return descendants
+      return collect(assetId)
     },
     
     getLineageChain: (assetId) => {
@@ -461,6 +475,54 @@ export const useLineageStore = create<LineageState>()(
       dependencies.set('all_descendants', get().getDescendants(assetId))
       
       return dependencies
+    },
+    
+    // ---- Stale management ----
+    
+    invalidateSubtree: (assetId) => {
+      const state = get()
+      const descendants = get().getDescendants(assetId)
+      const staleIds: string[] = []
+      const now = new Date()
+      
+      set((s) => {
+        const newNodes = new Map(s.nodes)
+        for (const desc of descendants) {
+          // locked 节点不被 stale
+          if (desc.locked) continue
+          const updated = { ...desc, stale: true, staleSince: now, staleSource: assetId }
+          newNodes.set(desc.id, updated)
+          staleIds.push(desc.id)
+        }
+        return {
+          nodes: newNodes,
+          ...buildIndexes(newNodes, s.edges),
+        }
+      })
+      
+      return staleIds
+    },
+    
+    validateNode: (assetId) => {
+      set((s) => {
+        const node = s.nodes.get(assetId)
+        if (!node) return s
+        const newNodes = new Map(s.nodes)
+        newNodes.set(assetId, {
+          ...node,
+          stale: false,
+          staleSince: undefined,
+          staleSource: undefined,
+        })
+        return {
+          nodes: newNodes,
+          ...buildIndexes(newNodes, s.edges),
+        }
+      })
+    },
+    
+    getStaleNodes: () => {
+      return Array.from(get().nodes.values()).filter((n) => n.stale)
     },
     
     // ---- Impact analysis ----
@@ -616,6 +678,7 @@ export function trackAssetGeneration(
     referenceId,
     url,
     locked: false,
+    stale: false,
   })
   
   // 追踪生成参数

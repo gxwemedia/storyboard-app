@@ -25,6 +25,12 @@ export interface AssetNode {
   generatedAt: Date
   version: number
   locked: boolean
+  /** 上游变更后标记为失效，需重新生成 */
+  stale: boolean
+  /** 失效时间戳 */
+  staleSince?: Date
+  /** 导致失效的源资产 ID */
+  staleSource?: string
   /** 关联的业务对象ID（如角色ID、场景ID、镜头ID） */
   referenceId?: string
   /** 文件URL或Base64数据 */
