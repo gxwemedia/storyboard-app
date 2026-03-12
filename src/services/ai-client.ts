@@ -116,6 +116,16 @@ export async function sendPrompt(
       ? buildResponsesRequest(baseUrl, model, messages, temperature, jsonMode)
       : buildChatRequest(baseUrl, model, messages, temperature, jsonMode)
 
+    console.log('API请求参数:', {
+      endpoint,
+      model,
+      wireApi,
+      hasApiKey: !!apiKey,
+      messagesCount: messages.length,
+      temperature,
+      jsonMode
+    })
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -128,6 +138,13 @@ export async function sendPrompt(
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '')
+      console.error(`API请求失败: HTTP ${response.status}`, {
+        endpoint,
+        status: response.status,
+        statusText: response.statusText,
+        errorText,
+        config: { baseUrl, model, wireApi }
+      })
       throw createHttpError(response.status, errorText)
     }
 

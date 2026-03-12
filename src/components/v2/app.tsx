@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import type { StageId } from '@/types'
 import { Header } from './layout/header'
@@ -6,6 +6,7 @@ import { Sidebar } from './layout/sidebar'
 import { Workspace } from './layout/workspace'
 import { LogPanel } from './layout/log-panel'
 import { Button } from './common/button'
+import { ErrorViewer } from './common/error-viewer'
 import { Stage0Bible } from './stages/stage0-bible'
 import { Stage1Script } from './stages/stage1-script'
 import { Stage2Concept } from './stages/stage2-concept'
@@ -15,6 +16,9 @@ import { Stage5Final } from './stages/stage5-final'
 import './theme.css'
 
 export function V2App() {
+  const [error, setError] = useState<Error | null>(null)
+  const [showErrorDetails, setShowErrorDetails] = useState(false)
+  
   const {
     workflowStageId,
     focusedStageId,
@@ -57,6 +61,9 @@ export function V2App() {
   const isGenerating = aiStatus === 'generating'
 
   const handleApprove = async () => {
+    setError(null)
+    setShowErrorDetails(false)
+    
     try {
       const result = await approveCurrentStage()
       
@@ -67,7 +74,16 @@ export function V2App() {
       }
     } catch (error) {
       console.error('推进阶段失败:', error)
-      alert(`推进失败: ${error instanceof Error ? error.message : '未知错误'}`)
+      
+      const err = error instanceof Error ? error : new Error(String(error))
+      setError(err)
+      
+      // 显示简单的错误提示，让用户选择是否查看详情
+      const userChoice = confirm(`🚨 推进阶段失败: ${err.message}\n\n点击"确定"查看详细错误信息，点击"取消"继续。`)
+      
+      if (userChoice) {
+        setShowErrorDetails(true)
+      }
     }
   }
 
@@ -248,5 +264,17 @@ export function V2App() {
         </div>
       </div>
     </div>
+    
+    {/* 错误查看器 */}
+    {showErrorDetails && error && (
+      <ErrorViewer 
+        error={error} 
+        title="AI 调用失败 - 详细错误信息"
+        onClose={() => {
+          setShowErrorDetails(false)
+          setError(null)
+        }}
+      />
+    )}
   )
 }
