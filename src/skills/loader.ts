@@ -1,154 +1,167 @@
 /**
- * 技能包加载器
+ * 技能包加载器（CLI 工作流版）
  *
- * 管理技能包的注册、加载和获取。
- * 内置 4 个默认技能包，支持用户自定义扩展。
+ * 管理基于 Markdown 的技能文件：解析、注册、匹配、加载。
  */
 
-import type { SkillPack, SkillPackEntry, StageSkill, Stage3Skill } from './schema'
+import type { Skill, StepAction, StepHandler } from './schema'
+import { parseSkillMarkdown } from './parser'
+import { workflowExecutor } from './executor'
 
-// 内置技能包
-import suspensePack from './packs/suspense.json'
-import scifiPack from './packs/scifi.json'
-import epicFantasyPack from './packs/epic-fantasy.json'
-import realisticPack from './packs/realistic.json'
+// 内置 Markdown 技能（作为字符串直接 import）
+import suspenseWorkflowRaw from './packs/suspense-workflow.md?raw'
+import defaultWorkflowRaw from './packs/default-workflow.md?raw'
 
 // ---------------------------------------------------------------------------
-// 技能包注册表
+// 技能注册表
 // ---------------------------------------------------------------------------
 
-class SkillPackRegistry {
-  private packs = new Map<string, SkillPackEntry>()
-  private activePackId: string | null = null
+class SkillRegistry {
+  private skills = new Map<string, Skill>()
+  private activeSkillId: string | null = null
 
   constructor() {
-    // 注册内置技能包
-    this.registerBuiltin(suspensePack as unknown as SkillPack)
-    this.registerBuiltin(scifiPack as unknown as SkillPack)
-    this.registerBuiltin(epicFantasyPack as unknown as SkillPack)
-    this.registerBuiltin(realisticPack as unknown as SkillPack)
+    // 注册内置技能
+    this.registerRaw('suspense-workflow', suspenseWorkflowRaw, 'builtin')
+    this.registerRaw('default-workflow', defaultWorkflowRaw, 'builtin')
   }
 
-  private registerBuiltin(pack: SkillPack): void {
-    this.packs.set(pack.id, {
-      pack,
-      source: 'builtin',
-      loadedAt: new Date(),
-    })
+  /** 从原始 Markdown 注册 */
+  registerRaw(id: string, markdown: string, source: 'builtin' | 'user' = 'user'): void {
+    const skill = parseSkillMarkdown(markdown, id, source)
+    this.skills.set(id, skill)
   }
 
-  /** 注册用户自定义技能包 */
-  register(pack: SkillPack, source: 'user' | 'remote' = 'user'): void {
-    this.packs.set(pack.id, {
-      pack,
-      source,
-      loadedAt: new Date(),
-    })
+  /** 注册已解析的技能 */
+  register(skill: Skill): void {
+    this.skills.set(skill.id, skill)
   }
 
-  /** 移除技能包 */
+  /** 移除技能 */
   unregister(id: string): boolean {
-    if (this.activePackId === id) this.activePackId = null
-    return this.packs.delete(id)
+    if (this.activeSkillId === id) this.activeSkillId = null
+    return this.skills.delete(id)
   }
 
-  /** 获取所有已注册的技能包 */
-  getAll(): SkillPackEntry[] {
-    return Array.from(this.packs.values())
+  /** 获取所有技能 */
+  getAll(): Skill[] {
+    return Array.from(this.skills.values())
   }
 
-  /** 获取技能包列表（简化） */
-  list(): Array<{ id: string; name: string; tags: string[]; source: string }> {
-    return this.getAll().map((e) => ({
-      id: e.pack.id,
-      name: e.pack.name,
-      tags: e.pack.tags,
-      source: e.source,
+  /** 列表（简化） */
+  list(): Array<{ id: string; name: string; description: string; tags: string[]; steps: number }> {
+    return this.getAll().map((s) => ({
+      id: s.id,
+      name: s.meta.name,
+      description: s.meta.description,
+      tags: s.meta.tags || [],
+      steps: s.steps.length,
     }))
   }
 
-  /** 根据 ID 获取技能包 */
-  get(id: string): SkillPack | undefined {
-    return this.packs.get(id)?.pack
+  /** 根据 ID 获取 */
+  get(id: string): Skill | undefined {
+    return this.skills.get(id)
   }
 
-  /** 设置当前激活的技能包 */
+  /** 激活技能 */
   setActive(id: string): boolean {
-    if (!this.packs.has(id)) return false
-    this.activePackId = id
+    if (!this.skills.has(id)) return false
+    this.activeSkillId = id
     return true
   }
 
-  /** 获取当前激活的技能包（无激活则返回 undefined） */
-  getActive(): SkillPack | undefined {
-    if (!this.activePackId) return undefined
-    return this.packs.get(this.activePackId)?.pack
+  /** 获取当前激活技能 */
+  getActive(): Skill | undefined {
+    if (!this.activeSkillId) return undefined
+    return this.skills.get(this.activeSkillId)
   }
 
-  /** 获取当前激活的技能包 ID */
   getActiveId(): string | null {
-    return this.activePackId
+    return this.activeSkillId
   }
 
-  /** 清除激活状态 */
   clearActive(): void {
-    this.activePackId = null
+    this.activeSkillId = null
   }
 
   // --------
-  // 技能解析：合并默认 Prompt + 技能包覆盖
+  // 匹配
   // --------
 
-  /** 获取指定阶段的合并后技能配置 */
-  resolveStageSkill(
-    stageKey: 'stage1' | 'stage2Character' | 'stage2Scene' | 'stage3',
-    defaultPrompt: string,
-    defaultTemperature: number,
-  ): { systemPrompt: string; temperature: number; fewShots: Array<{ input: string; output: string }> } {
-    const active = this.getActive()
-    const skill = active?.stages[stageKey]
+  /** 根据标签匹配技能 */
+  matchByTags(tags: string[]): Array<{ skill: Skill; score: number; matched: string[] }> {
+    const normalizedTags = tags.map((t) => t.toLowerCase().trim())
+    const results: Array<{ skill: Skill; score: number; matched: string[] }> = []
 
-    if (!skill) {
-      return { systemPrompt: defaultPrompt, temperature: defaultTemperature, fewShots: [] }
+    for (const skill of this.skills.values()) {
+      const skillTags = (skill.meta.tags || []).map((t) => t.toLowerCase().trim())
+      const matched: string[] = []
+
+      for (const tag of normalizedTags) {
+        if (skillTags.some((st) => st.includes(tag) || tag.includes(st))) {
+          matched.push(tag)
+        }
+      }
+
+      if (matched.length > 0) {
+        const score = matched.length / Math.max(normalizedTags.length, 1)
+        results.push({ skill, score, matched })
+      }
     }
 
-    // Prompt 合并策略：覆盖 > 追加 > 默认
-    let systemPrompt = defaultPrompt
-    if (skill.systemPrompt) {
-      systemPrompt = skill.systemPrompt
-    } else if (skill.systemPromptAppend) {
-      systemPrompt = `${defaultPrompt}\n\n${skill.systemPromptAppend}`
-    }
-
-    return {
-      systemPrompt,
-      temperature: skill.temperature ?? defaultTemperature,
-      fewShots: skill.fewShots || [],
-    }
+    // 优先级 + 匹配度排序
+    return results.sort((a, b) => {
+      const priDiff = (b.skill.meta.priority || 0) - (a.skill.meta.priority || 0)
+      return priDiff !== 0 ? priDiff : b.score - a.score
+    })
   }
 
-  /** 获取 Stage 3 专用配置（含景别/光位偏好） */
-  resolveStage3Skill(
-    defaultPrompt: string,
-    defaultTemperature: number,
-  ): {
-    systemPrompt: string
-    temperature: number
-    fewShots: Array<{ input: string; output: string }>
-    preferredScales?: string[]
-    preferredLighting?: string[]
-    shotCountHint?: [number, number]
-  } {
-    const base = this.resolveStageSkill('stage3', defaultPrompt, defaultTemperature)
-    const active = this.getActive()
-    const stage3 = active?.stages.stage3 as Stage3Skill | undefined
-
-    return {
-      ...base,
-      preferredScales: stage3?.preferredScales,
-      preferredLighting: stage3?.preferredLighting,
-      shotCountHint: stage3?.shotCountHint,
+  /** 自动匹配并激活 */
+  autoMatch(tags: string[]): Skill | undefined {
+    const results = this.matchByTags(tags)
+    if (results.length > 0) {
+      this.setActive(results[0].skill.id)
+      return results[0].skill
     }
+    return undefined
+  }
+
+  /** 按阶段过滤可用技能 */
+  getSkillsForStage(stageId: number): Skill[] {
+    return this.getAll().filter(
+      (s) => !s.meta.stages?.length || s.meta.stages.includes(stageId),
+    )
+  }
+
+  // --------
+  // 执行
+  // --------
+
+  /** 执行当前激活的技能 */
+  async executeActive(
+    variables?: Record<string, unknown>,
+    onProgress?: (step: number, total: number, name: string) => void,
+  ) {
+    const skill = this.getActive()
+    if (!skill) throw new Error('没有激活的技能')
+    return workflowExecutor.execute(skill, variables, onProgress)
+  }
+
+  /** 执行指定技能 */
+  async executeSkill(
+    id: string,
+    variables?: Record<string, unknown>,
+    onProgress?: (step: number, total: number, name: string) => void,
+  ) {
+    const skill = this.get(id)
+    if (!skill) throw new Error(`技能不存在: ${id}`)
+    return workflowExecutor.execute(skill, variables, onProgress)
+  }
+
+  /** 注册步骤处理器（代理到 executor） */
+  registerHandler(action: StepAction, handler: StepHandler): void {
+    workflowExecutor.registerHandler(action, handler)
   }
 }
 
@@ -156,4 +169,29 @@ class SkillPackRegistry {
 // 单例导出
 // ---------------------------------------------------------------------------
 
-export const skillPackRegistry = new SkillPackRegistry()
+export const skillRegistry = new SkillRegistry()
+
+// 兼容旧 API：保留 skillPackRegistry 别名
+export const skillPackRegistry = {
+  /** 获取激活技能的 Prompt 覆盖（兼容旧 orchestrator） */
+  resolveStageSkill(
+    _stageKey: string,
+    defaultPrompt: string,
+    defaultTemperature: number,
+  ) {
+    return { systemPrompt: defaultPrompt, temperature: defaultTemperature, fewShots: [] as Array<{ input: string; output: string }> }
+  },
+  resolveStage3Skill(
+    defaultPrompt: string,
+    defaultTemperature: number,
+  ) {
+    return {
+      systemPrompt: defaultPrompt,
+      temperature: defaultTemperature,
+      fewShots: [] as Array<{ input: string; output: string }>,
+      preferredScales: undefined as string[] | undefined,
+      preferredLighting: undefined as string[] | undefined,
+      shotCountHint: undefined as [number, number] | undefined,
+    }
+  },
+}
