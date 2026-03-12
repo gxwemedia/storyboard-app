@@ -1,0 +1,27 @@
+{
+  "id": "suspense-v1",
+  "name": "悬疑惊悚",
+  "version": "1.0.0",
+  "description": "适用于悬疑、惊悚、犯罪推理类剧本。强调暗调光影、紧迫构图、碎片化叙事。",
+  "tags": ["悬疑", "惊悚", "犯罪", "推理", "noir", "thriller", "mystery"],
+  "author": "system",
+  "stages": {
+    "stage1": {
+      "systemPromptAppend": "\n特别注意：悬疑类剧本扩写需强化以下要素：\n- 线索埋设：在环境描写中暗藏视觉线索\n- 氛围压迫：着重描写封闭空间、阴影、反常细节\n- 节奏控制：交替使用长段落（铺垫）和短句（爆发）\n- 视角限制：优先第一人称或跟随视角，制造信息不对称",
+      "temperature": 0.75
+    },
+    "stage2Character": {
+      "systemPromptAppend": "\n悬疑类角色描述要点：\n- 强调面部微表情和可疑特征\n- 服装选择暗色系、有年代感\n- 光照条件：侧光或底光，强调明暗对比\n- 标注视线方向和身体语言暗示"
+    },
+    "stage2Scene": {
+      "systemPromptAppend": "\n悬疑类场景描述要点：\n- 封闭感或迷宫感空间结构\n- 光源稀少、阴影区域占比大\n- 关键道具带有叙事暗示（血迹、脚印、断裂物品）\n- 色彩偏冷（青灰、暗蓝、褪色黄）"
+    },
+    "stage3": {
+      "systemPromptAppend": "\n悬疑分镜指导：\n- 优先使用 CU/ECU 景别捕捉微表情和线索特写\n- 光位偏好 Split 或 Rembrandt 制造面部阴影\n- 适当使用荷兰角（Dutch Angle）增加不安感\n- 镜头间保持紧凑节奏，避免过多远景铺垫",
+      "temperature": 0.4,
+      "preferredScales": ["CU", "ECU", "MS"],
+      "preferredLighting": ["Split", "Rembrandt", "Backlit"],
+      "shotCountHint": [4, 6]
+    }
+  }
+}

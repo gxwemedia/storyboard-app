@@ -10,6 +10,7 @@ import { sendPrompt, sendImagePrompt } from './ai-client'
 import type { ImageGenSettings, ProjectBible, ShotSpec } from '@/types'
 import { aiShotSpecArraySchema, inferStructuredFields } from '@/schemas/shot-spec'
 import { generateGrayModel, generateGrayModelMock, type GrayModelStyle, type GrayModelResult } from './sdxl-client'
+import { skillPackRegistry } from '@/skills'
 
 // ---------------------------------------------------------------------------
 // Stage 1 — 剧本扩写 (Script & Emotion Expansion)
@@ -37,8 +38,16 @@ export async function orchestrateStage1(
   bible: ProjectBible,
   rawScript: string,
 ): Promise<Stage1Result> {
+  // 技能包解析：覆盖/追加/默认 Prompt
+  const skill = skillPackRegistry.resolveStageSkill('stage1', STAGE1_SYSTEM_PROMPT, 0.8)
+
   const messages: AiMessage[] = [
-    { role: 'system', content: STAGE1_SYSTEM_PROMPT },
+    { role: 'system', content: skill.systemPrompt },
+    // Few-shot 样例注入
+    ...skill.fewShots.flatMap((fs) => [
+      { role: 'user' as const, content: fs.input },
+      { role: 'assistant' as const, content: fs.output },
+    ]),
     {
       role: 'user',
       content: [
@@ -55,7 +64,7 @@ export async function orchestrateStage1(
     },
   ]
 
-  const response = await sendPrompt(messages, { temperature: 0.8 })
+  const response = await sendPrompt(messages, { temperature: skill.temperature })
   return { expandedScript: response.content.trim() }
 }
 
@@ -97,8 +106,28 @@ export async function orchestrateStage3(
   expandedScript: string,
   conceptTitle: string,
 ): Promise<Stage3Result> {
+  // 技能包解析（含 Stage 3 扩展）
+  const skill = skillPackRegistry.resolveStage3Skill(STAGE3_SYSTEM_PROMPT, 0.5)
+
+  // 植入景别/光位偏好提示
+  let promptSuffix = ''
+  if (skill.preferredScales?.length) {
+    promptSuffix += `\n景别偏好：优先使用 ${skill.preferredScales.join('/')}\u3002`
+  }
+  if (skill.preferredLighting?.length) {
+    promptSuffix += `\n光位偏好：优先使用 ${skill.preferredLighting.join('/')}\u3002`
+  }
+  if (skill.shotCountHint) {
+    promptSuffix += `\n镜头数量建议：${skill.shotCountHint[0]}-${skill.shotCountHint[1]} 个\u3002`
+  }
+
   const messages: AiMessage[] = [
-    { role: 'system', content: STAGE3_SYSTEM_PROMPT },
+    { role: 'system', content: skill.systemPrompt + promptSuffix },
+    // Few-shot 样例
+    ...skill.fewShots.flatMap((fs) => [
+      { role: 'user' as const, content: fs.input },
+      { role: 'assistant' as const, content: fs.output },
+    ]),
     {
       role: 'user',
       content: [
@@ -119,7 +148,7 @@ export async function orchestrateStage3(
   ]
 
   const response = await sendPrompt(messages, {
-    temperature: 0.5,
+    temperature: skill.temperature,
     jsonMode: true,
   })
 
@@ -220,11 +249,20 @@ export async function orchestrateStage2Consistency(
   name: string,
   description: string,
 ): Promise<Stage2ConsistencyResult> {
-  const systemPrompt = type === 'character' ? STAGE2_CHARACTER_PROMPT : STAGE2_SCENE_PROMPT
+  const stageKey = type === 'character' ? 'stage2Character' as const : 'stage2Scene' as const
+  const defaultPrompt = type === 'character' ? STAGE2_CHARACTER_PROMPT : STAGE2_SCENE_PROMPT
   const label = type === 'character' ? '角色' : '场景'
 
+  // 技能包解析
+  const skill = skillPackRegistry.resolveStageSkill(stageKey, defaultPrompt, 0.7)
+
   const messages: AiMessage[] = [
-    { role: 'system', content: systemPrompt },
+    { role: 'system', content: skill.systemPrompt },
+    // Few-shot 样例
+    ...skill.fewShots.flatMap((fs) => [
+      { role: 'user' as const, content: fs.input },
+      { role: 'assistant' as const, content: fs.output },
+    ]),
     {
       role: 'user',
       content: [
@@ -242,7 +280,7 @@ export async function orchestrateStage2Consistency(
     },
   ]
 
-  const response = await sendPrompt(messages, { temperature: 0.6 })
+  const response = await sendPrompt(messages, { temperature: skill.temperature })
   return { consistencyPrompt: response.content.trim() }
 }
 
