@@ -9,6 +9,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "codex:skills": "node scripts/codex-skill-audit.mjs"
   },
   "dependencies": {
@@ -32,8 +35,10 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
+    "@vitest/coverage-v8": "^4.0.18",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
   }
 }
