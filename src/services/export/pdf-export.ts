@@ -340,8 +340,7 @@ function getShotsPerPage(style: string): number {
     horizontal: 1,
   }
   return counts[style] || 4
-(
-  style}
+}
 
 function getLayout(
   style: string,
