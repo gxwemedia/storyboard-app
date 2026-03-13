@@ -18,9 +18,9 @@ import type { StageId } from '@/types'
 // ---------------------------------------------------------------------------
 
 describe('初始化数据完整性', () => {
-  it('workflowStages 包含 6 个阶段 (0-5)', () => {
-    expect(workflowStages).toHaveLength(6)
-    for (let i = 0; i <= 5; i++) {
+  it('workflowStages 包含 5 个阶段 (0-4)', () => {
+    expect(workflowStages).toHaveLength(5)
+    for (let i = 0; i <= 4; i++) {
       const stage = workflowStages.find((s) => s.id === i)
       expect(stage).toBeDefined()
       expect(stage!.label.length).toBeGreaterThan(0)
@@ -50,34 +50,36 @@ describe('初始化数据完整性', () => {
 
 describe('buildServerStates', () => {
   it('始终返回 4 个 server 状态', () => {
-    for (let i = 0; i <= 5; i++) {
+    for (let i = 0; i <= 4; i++) {
       const states = buildServerStates(i as StageId)
       expect(states).toHaveLength(4)
       expect(states.map((s) => s.key)).toEqual(['memory', 'prompt', 'render', 'vision'])
     }
   })
 
-  it('Stage 0 只有 memory 为 active', () => {
+  it('Stage 0 memory 和 prompt 为 active', () => {
     const states = buildServerStates(0)
     expect(states.find((s) => s.key === 'memory')!.tone).toBe('active')
+    expect(states.find((s) => s.key === 'prompt')!.tone).toBe('active')
     expect(states.find((s) => s.key === 'vision')!.tone).toBe('idle')
   })
 
-  it('Stage 4 render 和 vision 为 active', () => {
-    const states = buildServerStates(4)
+  it('Stage 3 render 和 vision 为 active', () => {
+    const states = buildServerStates(3)
     expect(states.find((s) => s.key === 'render')!.tone).toBe('active')
     expect(states.find((s) => s.key === 'vision')!.tone).toBe('active')
   })
 
   it('AI generating 状态下 prompt 显示 busy', () => {
-    const states = buildServerStates(1, 'generating')
+    // Stage 0 现在是圣经+剧本，prompt busy 在 stageId 0 或 2
+    const states = buildServerStates(0, 'generating')
     const prompt = states.find((s) => s.key === 'prompt')!
     expect(prompt.tone).toBe('active')
     expect(prompt.status).toContain('Generating')
   })
 
   it('AI error 状态下 prompt 显示 warning', () => {
-    const states = buildServerStates(1, 'error')
+    const states = buildServerStates(0, 'error')
     const prompt = states.find((s) => s.key === 'prompt')!
     expect(prompt.tone).toBe('warning')
     expect(prompt.status).toBe('Error')

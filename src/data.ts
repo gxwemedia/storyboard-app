@@ -1,12 +1,11 @@
 import type { ConceptReference, LogEntry, OutputFrame, ProjectBible, ServerState, ShotSpec, StageId, WorkflowStage } from '@/types'
 
 export const workflowStages: WorkflowStage[] = [
-  { id: 0, label: '项目圣经', shortLabel: 'Bible', summary: '锁定世界观、色彩脚本与镜头排斥规则。', deliverable: 'Ground Truth Level 0', decisionHint: '先定调，再让所有节点服从。' },
-  { id: 1, label: '剧情扩写', shortLabel: 'Script', summary: '完善情绪节拍、角色心理与戏剧钩子。', deliverable: 'Expanded Story Beats', decisionHint: '文本决定后续镜头张力。' },
-  { id: 2, label: '概念设定', shortLabel: 'Concept', summary: '锁定角色、场景与关键材质方向。', deliverable: 'Face / Scene Reference', decisionHint: '不要让世界观在这一步漂。' },
-  { id: 3, label: '分镜脚本', shortLabel: 'ShotSpec', summary: '导演视图与机器参数视图并排共创。', deliverable: 'ShotSpec JSON', decisionHint: '让机位语言和文本节奏对齐。' },
-  { id: 4, label: '灰模预演', shortLabel: 'Previz', summary: '低成本排查空间坍塌、主光方向与连续性。', deliverable: 'Blockout / Lighting Preview', decisionHint: '在最便宜的地方消灭昂贵错误。' },
-  { id: 5, label: '终版签发', shortLabel: 'Final', summary: '终版批注、签发归档与交付导出。', deliverable: 'Archive & Delivery Package', decisionHint: '只在结果仓里做最后判断。' },
+  { id: 0, label: '圣经 & 剧本', shortLabel: 'Bible+Script', summary: '锁定世界观、色彩脚本、禁忌规则，并完成剧本扩写。', deliverable: 'Ground Truth + Expanded Script', decisionHint: '先定调、再扩写，让所有节点服从。' },
+  { id: 1, label: '概念设定', shortLabel: 'Concept', summary: '锁定角色、场景与关键材质方向。', deliverable: 'Face / Scene Reference', decisionHint: '不要让世界观在这一步漂。' },
+  { id: 2, label: '分镜脚本', shortLabel: 'ShotSpec', summary: '导演视图与机器参数视图并排共创。', deliverable: 'ShotSpec JSON', decisionHint: '让机位语言和文本节奏对齐。' },
+  { id: 3, label: '灰模预演', shortLabel: 'Previz', summary: '低成本排查空间坍塌、主光方向与连续性。', deliverable: 'Blockout / Lighting Preview', decisionHint: '在最便宜的地方消灭昂贵错误。' },
+  { id: 4, label: '终版签发', shortLabel: 'Final', summary: '终版批注、签发归档与交付导出。', deliverable: 'Archive & Delivery Package', decisionHint: '只在结果仓里做最后判断。' },
 ]
 
 export const initialBible: ProjectBible = {
@@ -43,43 +42,42 @@ export const initialLogs: LogEntry[] = [
 
 export const buildServerStates = (stageId: StageId, aiStatus: 'idle' | 'generating' | 'error' = 'idle'): ServerState[] => {
   const activeMap: Record<StageId, ServerState['key'][]> = {
-    0: ['memory'],
-    1: ['memory', 'prompt'],
-    2: ['prompt', 'render'],
-    3: ['memory', 'prompt'],
-    4: ['render', 'vision'],
-    5: ['memory', 'render', 'vision'],
+    0: ['memory', 'prompt'],
+    1: ['prompt', 'render'],
+    2: ['memory', 'prompt'],
+    3: ['render', 'vision'],
+    4: ['memory', 'render', 'vision'],
   }
 
-  const isPromptBusy = aiStatus === 'generating' && (stageId === 1 || stageId === 3)
+  const isPromptBusy = aiStatus === 'generating' && (stageId === 0 || stageId === 2)
   const promptStatus = isPromptBusy
     ? 'GPT-5.4 Generating…'
-    : aiStatus === 'error' && (stageId === 1 || stageId === 3)
+    : aiStatus === 'error' && (stageId === 0 || stageId === 2)
       ? 'Error'
-      : stageId === 3
+      : stageId === 2
         ? 'Compiling ShotSpec'
         : 'Idle'
 
   const promptTone: ServerState['tone'] = isPromptBusy
     ? 'active'
-    : aiStatus === 'error' && (stageId === 1 || stageId === 3)
+    : aiStatus === 'error' && (stageId === 0 || stageId === 2)
       ? 'warning'
       : activeMap[stageId].includes('prompt')
         ? 'active'
         : 'idle'
 
-  const isRenderBusy = aiStatus === 'generating' && stageId === 2
+  const isRenderBusy = aiStatus === 'generating' && stageId === 1
   const renderStatus = isRenderBusy
     ? 'Gemini Image Generating…'
-    : stageId >= 4
+    : stageId >= 3
       ? 'Rendering / Previz'
-      : stageId === 2
+      : stageId === 1
         ? 'Concept Image Ready'
         : 'Idle'
 
   const renderTone: ServerState['tone'] = isRenderBusy
     ? 'active'
-    : aiStatus === 'error' && stageId === 2
+    : aiStatus === 'error' && stageId === 1
       ? 'warning'
       : activeMap[stageId].includes('render')
         ? 'active'
@@ -89,6 +87,6 @@ export const buildServerStates = (stageId: StageId, aiStatus: 'idle' | 'generati
     { key: 'memory', title: 'Script & Memory', meta: 'Database / Vector', status: 'Ground Truth Sync', tone: activeMap[stageId].includes('memory') ? 'active' : 'idle' },
     { key: 'prompt', title: 'Prompt Engineering', meta: 'GPT-5.4 / Comfy JSON', status: promptStatus, tone: promptTone },
     { key: 'render', title: 'Render & Synthesis', meta: 'Gemini Image / RunningHub', status: renderStatus, tone: renderTone },
-    { key: 'vision', title: 'Consistency Vision', meta: 'Vision Verifier', status: stageId >= 4 ? 'Continuity Check' : 'Idle', tone: activeMap[stageId].includes('vision') ? 'active' : 'idle' },
+    { key: 'vision', title: 'Consistency Vision', meta: 'Vision Verifier', status: stageId >= 3 ? 'Continuity Check' : 'Idle', tone: activeMap[stageId].includes('vision') ? 'active' : 'idle' },
   ]
 }

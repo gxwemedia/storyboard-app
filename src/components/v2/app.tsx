@@ -8,7 +8,6 @@ import { LogPanel } from './layout/log-panel'
 import { Button } from './common/button'
 import { ErrorViewer } from './common/error-viewer'
 import { Stage0Bible } from './stages/stage0-bible'
-import { Stage1Script } from './stages/stage1-script'
 import { Stage2Concept } from './stages/stage2-concept'
 import { Stage3Shots } from './stages/stage3-shots'
 import { Stage4Previz } from './stages/stage4-previz'
@@ -78,7 +77,6 @@ export function V2App() {
       const err = error instanceof Error ? error : new Error(String(error))
       setError(err)
       
-      // 显示简单的错误提示，让用户选择是否查看详情
       const userChoice = confirm(`🚨 推进阶段失败: ${err.message}\n\n点击"确定"查看详细错误信息，点击"取消"继续。`)
       
       if (userChoice) {
@@ -92,7 +90,6 @@ export function V2App() {
   }
 
   const handleExport = () => {
-    // TODO: 实现导出功能
     alert('导出功能开发中...')
   }
 
@@ -101,21 +98,20 @@ export function V2App() {
 
     switch (stage) {
       case 0:
-        return <Stage0Bible bible={projectBible} onUpdate={updateBible} />
-
-      case 1:
         return (
-          <Stage1Script
+          <Stage0Bible
+            bible={projectBible}
+            onUpdate={updateBible}
             rawScript={rawScript}
             expandedScript={expandedScript}
             onUpdateRaw={updateRawScript}
             onUpdateExpanded={updateExpandedScript}
-            onGenerate={() => runStageAI(1)}
+            onGenerate={() => runStageAI(0)}
             isGenerating={isGenerating}
           />
         )
 
-      case 2:
+      case 1:
         return (
           <Stage2Concept
             characters={characters}
@@ -136,17 +132,17 @@ export function V2App() {
           />
         )
 
-      case 3:
+      case 2:
         return (
           <Stage3Shots
             shots={shotSpecs}
             onUpdateShot={updateShot}
-            onGenerate={() => runStageAI(3)}
+            onGenerate={() => runStageAI(2)}
             isGenerating={isGenerating}
           />
         )
 
-      case 4:
+      case 3:
         return (
           <Stage4Previz
             shots={shotSpecs}
@@ -158,7 +154,7 @@ export function V2App() {
           />
         )
 
-      case 5:
+      case 4:
         return (
           <Stage5Final
             finalNotes={finalNotes}
@@ -175,12 +171,11 @@ export function V2App() {
 
   const getStageInfo = () => {
     const stageInfo = [
-      { id: 0, title: '项目圣经', description: 'Ground Truth Level 0' },
-      { id: 1, title: '剧情扩写', description: 'Expanded Story Beats' },
-      { id: 2, title: '概念设定', description: 'Face / Scene Reference' },
-      { id: 3, title: '分镜脚本', description: 'ShotSpec JSON' },
-      { id: 4, title: '灰模预演', description: 'Blockout / Lighting Preview' },
-      { id: 5, title: '终版签发', description: 'Archive & Delivery Package' },
+      { id: 0, title: '圣经 & 剧本', description: 'Ground Truth + Expanded Script' },
+      { id: 1, title: '概念设定', description: 'Face / Scene Reference' },
+      { id: 2, title: '分镜脚本', description: 'ShotSpec JSON' },
+      { id: 3, title: '灰模预演', description: 'Blockout / Lighting Preview' },
+      { id: 4, title: '终版签发', description: 'Archive & Delivery Package' },
     ]
     return stageInfo.find(s => s.id === focusedStageId) || stageInfo[0]
   }
@@ -194,15 +189,12 @@ export function V2App() {
       padding: '1rem'
     }}>
       <div style={{ maxWidth: '1920px', margin: '0 auto' }}>
-        {/* 顶部栏 */}
         <Header 
           workflowStageId={workflowStageId} 
           archiveReady={archiveReady} 
         />
 
-        {/* 主布局 */}
         <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 320px', gap: '1rem' }}>
-          {/* 左侧栏 */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <Sidebar
               workflowStageId={workflowStageId}
@@ -216,7 +208,6 @@ export function V2App() {
             />
           </div>
 
-          {/* 中央工作区 */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <Workspace
               title={stageInfo.title}
@@ -257,14 +248,12 @@ export function V2App() {
             </Workspace>
           </div>
 
-          {/* 右侧日志 */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <LogPanel logs={logs} />
           </div>
         </div>
       </div>
 
-      {/* 错误查看器 */}
       {showErrorDetails && error && (
         <ErrorViewer 
           error={error} 

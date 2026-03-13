@@ -101,7 +101,7 @@ describe('工作流推进与回退', () => {
   })
 
   it('rejectCurrentStage 会清除 archiveReady', () => {
-    useWorkbenchStore.setState({ workflowStageId: 5, archiveReady: true })
+    useWorkbenchStore.setState({ workflowStageId: 4 as StageId, archiveReady: true })
     useWorkbenchStore.getState().rejectCurrentStage()
     expect(useWorkbenchStore.getState().archiveReady).toBe(false)
   })
@@ -291,11 +291,11 @@ describe('getStageStatus selector', () => {
     expect(getStageStatus(4 as StageId, 2 as StageId, false)).toBe('pending')
   })
 
-  it('Stage 5 归档后返回 completed', () => {
-    expect(getStageStatus(5 as StageId, 5 as StageId, true)).toBe('completed')
+  it('Stage 4 归档后返回 completed', () => {
+    expect(getStageStatus(4 as StageId, 4 as StageId, true)).toBe('completed')
   })
 
-  it('Stage 5 未归档返回 active', () => {
-    expect(getStageStatus(5 as StageId, 5 as StageId, false)).toBe('active')
+  it('Stage 4 未归档返回 active', () => {
+    expect(getStageStatus(4 as StageId, 4 as StageId, false)).toBe('active')
   })
 })

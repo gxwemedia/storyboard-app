@@ -6,7 +6,7 @@
 // 基础类型（从原 types.ts 迁移）
 // ---------------------------------------------------------------------------
 
-export type StageId = 0 | 1 | 2 | 3 | 4 | 5
+export type StageId = 0 | 1 | 2 | 3 | 4
 export type ServerKey = 'memory' | 'prompt' | 'render' | 'vision'
 
 export interface WorkflowStage {

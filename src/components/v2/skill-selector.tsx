@@ -13,6 +13,8 @@ interface SkillSelectorProps {
   styleHint?: string
   /** bible 技能包选中后，回调预设值以回填表单 */
   onBiblePresetApply?: (preset: BiblePreset) => void
+  /** 仅显示指定分类的技能下拉（每个 Stage 只加载自己的分类） */
+  filterCategories?: SkillCategory[]
 }
 
 type CategoryState = {
@@ -20,16 +22,16 @@ type CategoryState = {
   autoMode: boolean
 }
 
-const CATEGORIES = Object.keys(SKILL_CATEGORIES) as SkillCategory[]
+const ALL_CATEGORIES = Object.keys(SKILL_CATEGORIES) as SkillCategory[]
 
 // ---------------------------------------------------------------------------
 // 组件
 // ---------------------------------------------------------------------------
 
-export function SkillSelector({ styleHint = '', onBiblePresetApply }: SkillSelectorProps) {
+export function SkillSelector({ styleHint = '', onBiblePresetApply, filterCategories }: SkillSelectorProps) {
   const [state, setState] = useState<Record<SkillCategory, CategoryState>>(() => {
     const init: Record<string, CategoryState> = {}
-    for (const cat of CATEGORIES) {
+    for (const cat of ALL_CATEGORIES) {
       init[cat] = { selectedId: null, autoMode: false }
     }
     return init as Record<SkillCategory, CategoryState>
@@ -38,7 +40,7 @@ export function SkillSelector({ styleHint = '', onBiblePresetApply }: SkillSelec
   // 自动匹配：styleHint 变化 + autoMode 开启时触发
   useEffect(() => {
     if (!styleHint) return
-    for (const cat of CATEGORIES) {
+    for (const cat of (filterCategories || ALL_CATEGORIES)) {
       if (state[cat].autoMode) {
         const matched = skillRegistry.autoMatchByCategory(cat, styleHint)
         if (matched) {
@@ -101,7 +103,7 @@ export function SkillSelector({ styleHint = '', onBiblePresetApply }: SkillSelec
       description="为每个管线阶段选择技能包，或开启自动匹配。选择「项目圣经」技能包会自动回填上方表单。"
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
-        {CATEGORIES.map((cat) => {
+        {(filterCategories || ALL_CATEGORIES).map((cat) => {
           const catInfo = SKILL_CATEGORIES[cat]
           const skills = skillRegistry.getByCategory(cat)
           const catState = state[cat]

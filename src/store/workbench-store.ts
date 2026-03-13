@@ -52,7 +52,7 @@ interface WorkbenchState {
   logs: LogEntry[]
   outputs: typeof outputFrames
 
-  // Stage 4: 灰模预演
+  // Stage 3: 灰模预演
   grayModels: Record<string, string>  // shotId -> imageUrl
   grayModelStyle: GrayModelStyle
   grayModelGenerating: boolean
@@ -94,7 +94,7 @@ interface WorkbenchState {
   runImageGenAI: (type: 'character' | 'scene', id: string) => Promise<void>
   clearAiError: () => void
 
-  // Actions — Stage 4 灰模
+  // Actions — Stage 3 灰模
   setGrayModelStyle: (style: GrayModelStyle) => void
   runGrayModelGen: (shotId?: string) => Promise<void>
   updateGrayModel: (shotId: string, imageUrl: string) => void
@@ -143,10 +143,10 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   approveCurrentStage: async () => {
     const current = get().workflowStageId
 
-    if (current === 5) {
+    if (current === 4) {
       get().appendLog('success', '终版签发完成，归档包已准备导出。')
-      set({ archiveReady: true, focusedStageId: 5 })
-      return { from: 5 as StageId, to: 5 as StageId, archived: true }
+      set({ archiveReady: true, focusedStageId: 4 })
+      return { from: 4 as StageId, to: 4 as StageId, archived: true }
     }
 
     const next = (current + 1) as StageId
@@ -157,14 +157,14 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
       workflowStageId: next,
       focusedStageId: next,
       outputs: state.outputs.map((item, index) => {
-        if (next >= 5 && index === 2) {
+        if (next >= 4 && index === 2) {
           return { ...item, status: 'ready' as const, caption: '终版签发后自动生成导出资产包与元数据摘要。', grade: '可导出' }
         }
         return item
       }),
     }))
 
-    await get().runStageAI(next)
+    // 不再自动调用 AI，用户在新 Stage 页面手动触发
     return { from: current, to: next, archived: false }
   },
 
@@ -251,14 +251,14 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   runStageAI: async (stageId: StageId) => {
     const state = get()
 
-    // Stage 0 / 2 / 5 无全阶段 AI 调用
-    if (stageId === 0 || stageId === 2 || stageId === 5) {
+    // Stage 1 (概念设定) / Stage 4 (终版) 无全阶段 AI 调用
+    if (stageId === 1 || stageId === 4) {
       console.log(`Stage ${stageId} 不需要AI调用`)
       return
     }
 
-    // Stage 4: 灰模预演
-    if (stageId === 4) {
+    // Stage 3: 灰模预演
+    if (stageId === 3) {
       await get().runGrayModelGen()
       return
     }
@@ -267,12 +267,13 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
     get().appendLog('info', `Orchestrator 正在调用 GPT-5.4 执行 Stage ${stageId} 任务…`)
 
     try {
-      if (stageId === 1) {
+      if (stageId === 0) {
+        // Stage 0: 剧本扩写
         const result = await orchestrateStage1(state.projectBible, state.rawScript)
         set({ expandedScript: result.expandedScript, aiStatus: 'idle' })
-        get().appendLog('success', `Stage 1 AI 扩写完成（${result.expandedScript.length} 字）。`)
-      } else if (stageId === 3) {
-        // 收集已锁定的角色/场景一致性描述
+        get().appendLog('success', `Stage 0 AI 扩写完成（${result.expandedScript.length} 字）。`)
+      } else if (stageId === 2) {
+        // Stage 2: 分镜生成
         const charContext = state.characters
           .filter((c) => c.locked && c.consistencyPrompt)
           .map((c) => `[角色: ${c.name}] ${c.consistencyPrompt}`)
@@ -288,14 +289,14 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
           [charContext, sceneContext].filter(Boolean).join('\n') || '未锁定',
         )
         set({ shotSpecs: result.shotSpecs, aiStatus: 'idle' })
-        get().appendLog('success', `Stage 3 AI 分镜生成完成（共 ${result.shotSpecs.length} 个镜头）。`)
+        get().appendLog('success', `Stage 2 AI 分镜生成完成（共 ${result.shotSpecs.length} 个镜头）。`)
       }
     } catch (err) {
       const message = (err as Error).message || '未知错误'
       console.error('runStageAI error:', err)
       set({ aiStatus: 'error', aiError: message })
       get().appendLog('error', `AI 调用失败：${message}`)
-      throw err // 重新抛出错误，让调用者也能捕获
+      throw err
     }
   },
 
@@ -403,7 +404,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
       const assetId = trackAssetGeneration(
         type === 'character' ? 'character_image' : 'scene_image',
         id,  // 引用ID
-        2,   // Stage 2: 概念设定
+        1,   // Stage 1: 概念设定
         result.imageUrl,
         {
           prompt,
@@ -449,7 +450,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
 
   clearAiError: () => set({ aiStatus: 'idle', aiError: null }),
 
-  // ---- Stage 4 灰模 actions ----
+  // ---- Stage 3 灰模 actions ----
 
   setGrayModelStyle: (style) => set({ grayModelStyle: style }),
 
@@ -493,7 +494,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
           const assetId = trackAssetGeneration(
             'gray_model',
             shotSpec.id,
-            4,  // Stage 4
+            3,  // Stage 3
             grayModel.imageUrl,
             {
               prompt: shotSpec.description,
@@ -546,7 +547,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
 
 export const getStageStatus = (stageId: StageId, workflowStageId: StageId, archiveReady: boolean) => {
   if (stageId < workflowStageId) return 'completed' as const
-  if (stageId === workflowStageId) return archiveReady && stageId === 5 ? 'completed' as const : 'active' as const
+  if (stageId === workflowStageId) return archiveReady && stageId === 4 ? 'completed' as const : 'active' as const
   return 'pending' as const
 }
 
