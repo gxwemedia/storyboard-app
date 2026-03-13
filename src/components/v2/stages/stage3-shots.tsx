@@ -15,7 +15,7 @@ import {
 
 interface Stage3ShotsProps {
   shots: ShotSpec[]
-  onUpdateShot: (id: string, field: keyof Pick<ShotSpec, 'description' | 'lens' | 'composition' | 'emotion' | 'scale' | 'focalLength' | 'keyLight' | 'axisAnchor' | 'continuityLock'>, value: string) => void
+  onUpdateShot: (id: string, field: keyof Pick<ShotSpec, 'description' | 'lens' | 'composition' | 'emotion' | 'scale' | 'focalLength' | 'keyLight' | 'axisAnchor' | 'continuityLock' | 'sceneId' | 'imagePrompt' | 'videoPrompt' | 'dialogue' | 'soundEffect' | 'notes' | 'duration'>, value: string | number) => void
   onGenerate: () => void
   isGenerating: boolean
 }
@@ -141,6 +141,11 @@ export function Stage3Shots({ shots, onUpdateShot, onGenerate, isGenerating }: S
                     </div>
                     {/* V6 标签显示 */}
                     <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                      {shot.sceneId && (
+                        <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '999px', backgroundColor: 'rgba(16,185,129,0.12)', color: '#10b981' }}>
+                          {shot.sceneId}
+                        </span>
+                      )}
                       <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '999px', backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
                         {shot.scale}
                       </span>
@@ -150,6 +155,11 @@ export function Stage3Shots({ shots, onUpdateShot, onGenerate, isGenerating }: S
                       <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '999px', backgroundColor: 'rgba(168,85,247,0.12)', color: '#a855f7' }}>
                         {shot.keyLight}
                       </span>
+                      {shot.duration > 0 && (
+                        <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '999px', backgroundColor: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}>
+                          {shot.duration}s
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -251,6 +261,82 @@ export function Stage3Shots({ shots, onUpdateShot, onGenerate, isGenerating }: S
                       onChange={(v) => onUpdateShot(shot.id, 'continuityLock', v)}
                       placeholder="例如：与上一镜保持同一背景"
                       help="连戏一致性描述"
+                    />
+                  </div>
+                </div>
+
+                {/* V7 制图/视频参数 */}
+                <div style={{
+                  marginTop: '1rem',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid var(--color-border-subtle)',
+                }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-text-tertiary)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>
+                    ▸ 制图 / 视频 (V7)
+                  </div>
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    <InputField
+                      label="AI 图片提示词 (imagePrompt)"
+                      value={shot.imagePrompt || ''}
+                      onChange={(v) => onUpdateShot(shot.id, 'imagePrompt', v)}
+                      placeholder="中英双语提示词，角色用 @名称 引用"
+                      multiline
+                      rows={2}
+                    />
+                    <InputField
+                      label="AI 视频提示词 (videoPrompt)"
+                      value={shot.videoPrompt || ''}
+                      onChange={(v) => onUpdateShot(shot.id, 'videoPrompt', v)}
+                      placeholder="含表演动作 + 运镜描述，角色用 @名称 引用"
+                      multiline
+                      rows={2}
+                    />
+                  </div>
+                </div>
+
+                {/* V7 对白/音效/备注 */}
+                <div style={{
+                  marginTop: '1rem',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid var(--color-border-subtle)',
+                }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-text-tertiary)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>
+                    ▸ 对白 / 音效 / 信息
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <InputField
+                      label="对白"
+                      value={shot.dialogue || ''}
+                      onChange={(v) => onUpdateShot(shot.id, 'dialogue', v)}
+                      placeholder="角色台词"
+                    />
+                    <InputField
+                      label="音效描述"
+                      value={shot.soundEffect || ''}
+                      onChange={(v) => onUpdateShot(shot.id, 'soundEffect', v)}
+                      placeholder="环境音、动效"
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
+                    <InputField
+                      label="备注"
+                      value={shot.notes || ''}
+                      onChange={(v) => onUpdateShot(shot.id, 'notes', v)}
+                      placeholder="导演批注、特殊要求"
+                    />
+                    <InputField
+                      label="场次 ID"
+                      value={shot.sceneId || ''}
+                      onChange={(v) => onUpdateShot(shot.id, 'sceneId', v)}
+                      placeholder="SC01"
+                      help="同场次共享光影"
+                    />
+                    <InputField
+                      label="时长 (秒)"
+                      value={String(shot.duration || 3)}
+                      onChange={(v) => onUpdateShot(shot.id, 'duration', Number(v) || 3)}
+                      placeholder="3"
+                      help="建议 2-8 秒"
                     />
                   </div>
                 </div>
