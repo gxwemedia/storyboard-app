@@ -109,7 +109,7 @@ export function V2App() {
             expandedScript={expandedScript}
             onUpdateRaw={updateRawScript}
             onUpdateExpanded={updateExpandedScript}
-            onGenerate={() => runStageAI(0)}
+            onGenerate={() => runStageAI(0).catch((e: Error) => alert(`❌ 剧本扩写失败：${e.message}`))}
             isGenerating={isGenerating}
           />
         )
@@ -143,7 +143,13 @@ export function V2App() {
           <Stage3Shots
             shots={shotSpecs}
             onUpdateShot={updateShot}
-            onGenerate={() => runStageAI(2)}
+            onGenerate={() => {
+              if (!expandedScript?.trim()) {
+                alert('⚠️ 尚未进行剧本扩写，请先回到「圣经 & 剧本」阶段完成 AI 扩写后再生成分镜。')
+                return
+              }
+              runStageAI(2).catch((e: Error) => alert(`❌ 分镜生成失败：${e.message}`))
+            }}
             isGenerating={isGenerating}
           />
         )
