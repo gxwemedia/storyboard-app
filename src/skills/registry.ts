@@ -16,19 +16,24 @@ import type { Skill, SkillMeta, SkillCategory, BiblePreset } from './types'
 // bible 分类
 import darkGothicSkill from './packs/bible/dark-gothic/SKILL.md?raw'
 import brightFairyTaleSkill from './packs/bible/bright-fairy-tale/SKILL.md?raw'
+import mushenjiDarkguofengSkill from './packs/bible/mushenji-darkguofeng/SKILL.md?raw'
 // script 分类
 import suspenseScriptSkill from './packs/script/suspense-script/SKILL.md?raw'
 import epicFantasyScriptSkill from './packs/script/epic-fantasy-script/SKILL.md?raw'
+import mushenjiScriptSkill from './packs/script/mushenji-script/SKILL.md?raw'
 // concept 分类
 import suspenseSkill from './packs/concept/suspense-cinematography/SKILL.md?raw'
 import realisticSkill from './packs/concept/realistic-drama/SKILL.md?raw'
 import charDesignSheetSkill from './packs/concept/character-design-sheet/SKILL.md?raw'
+import mushenjiConceptSkill from './packs/concept/mushenji-concept/SKILL.md?raw'
 // shotspec 分类
 import shotSpecSkill from './packs/shotspec/shot-spec-expert/SKILL.md?raw'
 import fantasySkill from './packs/shotspec/epic-fantasy-visual/SKILL.md?raw'
 import scifiSkill from './packs/shotspec/scifi-worldbuilding/SKILL.md?raw'
+import mushenjiShotspecSkill from './packs/shotspec/mushenji-shotspec/SKILL.md?raw'
 // rendering 分类
 import defaultRenderSkill from './packs/rendering/default-render/SKILL.md?raw'
+import mushenjiRenderSkill from './packs/rendering/mushenji-render/SKILL.md?raw'
 
 // ---------------------------------------------------------------------------
 // SKILL.md 解析
@@ -93,19 +98,24 @@ class SkillRegistry {
     // 注册内置技能 —— bible
     this.register(parseSkillMd(darkGothicSkill, 'dark-gothic'))
     this.register(parseSkillMd(brightFairyTaleSkill, 'bright-fairy-tale'))
+    this.register(parseSkillMd(mushenjiDarkguofengSkill, 'mushenji-darkguofeng'))
     // script
     this.register(parseSkillMd(suspenseScriptSkill, 'suspense-script'))
     this.register(parseSkillMd(epicFantasyScriptSkill, 'epic-fantasy-script'))
+    this.register(parseSkillMd(mushenjiScriptSkill, 'mushenji-script'))
     // concept
     this.register(parseSkillMd(suspenseSkill, 'suspense-cinematography'))
     this.register(parseSkillMd(realisticSkill, 'realistic-drama'))
     this.register(parseSkillMd(charDesignSheetSkill, 'character-design-sheet'))
+    this.register(parseSkillMd(mushenjiConceptSkill, 'mushenji-concept'))
     // shotspec
     this.register(parseSkillMd(shotSpecSkill, 'shot-spec-expert'))
     this.register(parseSkillMd(fantasySkill, 'epic-fantasy-visual'))
     this.register(parseSkillMd(scifiSkill, 'scifi-worldbuilding'))
+    this.register(parseSkillMd(mushenjiShotspecSkill, 'mushenji-shotspec'))
     // rendering
     this.register(parseSkillMd(defaultRenderSkill, 'default-render'))
+    this.register(parseSkillMd(mushenjiRenderSkill, 'mushenji-render'))
   }
 
   // ========== 基础操作 ==========

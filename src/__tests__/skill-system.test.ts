@@ -70,7 +70,7 @@ preset_forbidden: 禁止卡通
 describe('注册表 — 基础操作', () => {
   it('有 11 个内置技能', () => {
     const list = skillRegistry.list()
-    expect(list.length).toBe(11)
+    expect(list.length).toBe(16)
   })
 
   it('按 ID 获取技能', () => {
@@ -99,28 +99,28 @@ category: shotspec
 describe('注册表 — 分类查询', () => {
   it('bible 分类有 2 个技能', () => {
     const bibleSkills = skillRegistry.getByCategory('bible')
-    expect(bibleSkills).toHaveLength(2)
+    expect(bibleSkills).toHaveLength(3)
   })
 
   it('script 分类有 2 个技能', () => {
     const scriptSkills = skillRegistry.getByCategory('script')
-    expect(scriptSkills).toHaveLength(2)
+    expect(scriptSkills).toHaveLength(3)
   })
 
   it('concept 分类有 3 个技能', () => {
     const conceptSkills = skillRegistry.getByCategory('concept')
-    expect(conceptSkills).toHaveLength(3)
+    expect(conceptSkills).toHaveLength(4)
     expect(conceptSkills.some((s) => s.id === 'character-design-sheet')).toBe(true)
   })
 
   it('shotspec 分类有 3 个技能', () => {
     const shotspecSkills = skillRegistry.getByCategory('shotspec')
-    expect(shotspecSkills).toHaveLength(3)
+    expect(shotspecSkills).toHaveLength(4)
   })
 
   it('rendering 分类有 1 个技能', () => {
     const renderingSkills = skillRegistry.getByCategory('rendering')
-    expect(renderingSkills).toHaveLength(1)
+    expect(renderingSkills).toHaveLength(2)
   })
 })
 
