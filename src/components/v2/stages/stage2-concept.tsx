@@ -8,6 +8,7 @@ interface Stage2ConceptProps {
   characters: CharacterDesign[]
   scenes: SceneDesign[]
   onUpdateCharacter: (id: string, field: 'name' | 'description', value: string) => void
+  onUploadCharacterSheet: (id: string, url: string) => void
   onUpdateCharacterImageSetting: (id: string, field: 'imageAspectRatio' | 'imageSize', value: ImageAspectRatio | ImageSize) => void
   onUpdateScene: (id: string, field: 'name' | 'description', value: string) => void
   onUpdateSceneImageSetting: (id: string, field: 'imageAspectRatio' | 'imageSize', value: ImageAspectRatio | ImageSize) => void
@@ -29,6 +30,7 @@ interface Stage2ConceptProps {
 function CharacterCard({
   char,
   onUpdate,
+  onUpload,
   onToggleLock,
   onRunConsistency,
   onRunImageGen,
@@ -37,6 +39,7 @@ function CharacterCard({
 }: {
   char: CharacterDesign
   onUpdate: (id: string, field: 'name' | 'description', value: string) => void
+  onUpload: (id: string, url: string) => void
   onToggleLock: (id: string) => void
   onRunConsistency: (id: string) => void
   onRunImageGen: (id: string) => void
@@ -52,10 +55,7 @@ function CharacterCard({
     const file = e.target.files?.[0]
     if (!file) return
     const url = URL.createObjectURL(file)
-    // 通过 store 更新（通知父组件）
-    // 这里直接修改 DOM 回传
-    const event = new CustomEvent('character-upload', { detail: { id: char.id, url } })
-    window.dispatchEvent(event)
+    onUpload(char.id, url)
   }
 
   const categoryLabels = {
@@ -328,6 +328,7 @@ export function Stage2Concept({
   characters,
   scenes,
   onUpdateCharacter,
+  onUploadCharacterSheet,
   onUpdateCharacterImageSetting,
   onUpdateScene,
   onUpdateSceneImageSetting,
@@ -405,6 +406,7 @@ export function Stage2Concept({
               key={char.id}
               char={char}
               onUpdate={onUpdateCharacter}
+              onUpload={onUploadCharacterSheet}
               onToggleLock={onToggleCharacterLock}
               onRunConsistency={(id) => onRunConsistency('character', id)}
               onRunImageGen={(id) => onRunImageGen('character', id)}

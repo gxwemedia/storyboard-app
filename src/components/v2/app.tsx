@@ -37,6 +37,7 @@ export function V2App() {
     updateRawScript,
     updateExpandedScript,
     updateCharacterField,
+    uploadCharacterSheet,
     updateCharacterImageSetting,
     updateSceneField,
     updateSceneImageSetting,
@@ -117,6 +118,7 @@ export function V2App() {
             characters={characters}
             scenes={scenes}
             onUpdateCharacter={updateCharacterField}
+            onUploadCharacterSheet={uploadCharacterSheet}
             onUpdateCharacterImageSetting={updateCharacterImageSetting}
             onUpdateScene={updateSceneField}
             onUpdateSceneImageSetting={updateSceneImageSetting}

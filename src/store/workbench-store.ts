@@ -73,6 +73,7 @@ interface WorkbenchState {
   // 角色
   updateCharacterField: (id: string, field: 'name' | 'description', value: string) => void
   updateCharacterImage: (id: string, imageUrl: string) => void
+  uploadCharacterSheet: (id: string, url: string) => void
   updateCharacterImageSetting: (id: string, field: 'imageAspectRatio' | 'imageSize', value: ImageAspectRatio | ImageSize) => void
   toggleCharacterLock: (id: string) => void
   addCharacter: () => void
@@ -190,6 +191,9 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
 
   updateCharacterImage: (id, imageUrl) =>
     set((s) => ({ characters: s.characters.map((c) => (c.id === id ? { ...c, imageUrl } : c)) })),
+
+  uploadCharacterSheet: (id, url) =>
+    set((s) => ({ characters: s.characters.map((c) => (c.id === id ? { ...c, uploadedSheetUrl: url } : c)) })),
 
   updateCharacterImageSetting: (id, field, value) =>
     set((s) => ({ characters: s.characters.map((c) => (c.id === id ? { ...c, [field]: value } : c)) })),
