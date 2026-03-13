@@ -7,7 +7,7 @@
  * - 每个 category 独立激活一个技能，最终组合注入 system prompt
  */
 
-import type { Skill, SkillMeta, SkillCategory } from './types'
+import type { Skill, SkillMeta, SkillCategory, BiblePreset } from './types'
 
 // ---------------------------------------------------------------------------
 // 内置 SKILL.md（通过 Vite ?raw import）
@@ -40,6 +40,7 @@ export function parseSkillMd(raw: string, id: string, source: 'builtin' | 'user'
   const match = raw.match(FRONTMATTER_RE)
   let meta: SkillMeta = { name: id, description: '', category: 'shotspec' }
   let instructions = raw
+  let preset: BiblePreset | undefined
 
   if (match) {
     // 简易 YAML 解析
@@ -48,7 +49,13 @@ export function parseSkillMd(raw: string, id: string, source: 'builtin' | 'user'
     for (const line of yamlBlock.split('\n')) {
       const colonIdx = line.indexOf(':')
       if (colonIdx === -1) continue
-      parsed[line.slice(0, colonIdx).trim()] = line.slice(colonIdx + 1).trim()
+      const key = line.slice(0, colonIdx).trim()
+      // 处理带引号的值
+      let val = line.slice(colonIdx + 1).trim()
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1)
+      }
+      parsed[key] = val
     }
     meta = {
       name: parsed.name || id,
@@ -56,9 +63,18 @@ export function parseSkillMd(raw: string, id: string, source: 'builtin' | 'user'
       category: (parsed.category as SkillCategory) || 'shotspec',
     }
     instructions = raw.slice(match[0].length).trim()
+
+    // 解析 bible 预设
+    if (parsed.preset_style) {
+      preset = {
+        style: parsed.preset_style,
+        colorScript: parsed.preset_colorScript || '',
+        forbidden: parsed.preset_forbidden || '',
+      }
+    }
   }
 
-  return { id, meta, instructions, source }
+  return { id, meta, instructions, source, preset }
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +150,12 @@ class SkillRegistry {
   /** 获取某分类下所有技能 */
   getByCategory(category: SkillCategory): Skill[] {
     return Array.from(this.skills.values()).filter((s) => s.meta.category === category)
+  }
+
+  /** 获取 bible 技能包的表单预设值 */
+  getBiblePreset(skillId: string): BiblePreset | undefined {
+    const skill = this.skills.get(skillId)
+    return skill?.preset
   }
 
   // ========== 分类激活（多激活模式） ==========

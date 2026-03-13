@@ -2,6 +2,9 @@
 name: bright-fairy-tale
 description: 明亮童话世界观模板，高饱和、柔光为主、梦幻色彩与手绘质感
 category: bible
+preset_style: "明亮童话 · 圆润造型 · 手绘质感 · 柔和光晕 · 自然花草 · 温暖梦幻 · 吉卜力风格"
+preset_colorScript: "天空蓝 (#87CEEB) + 草绿 (#90EE90) + 暖阳黄 (#FFD700) + 花粉粉 (#FFB6C1) · 饱和度中高 50-75% · 色温偏暖 6000K-6500K"
+preset_forbidden: "暗黑色调（主色明度<30%）· 血腥/暴力/恐怖元素 · 写实伤痕或衰老纹理 · 工业废墟或末日场景 · 荷兰角或极端变形构图"
 ---
 
 # 明亮童话世界观圣经

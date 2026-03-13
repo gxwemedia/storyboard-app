@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { skillRegistry } from '@/skills/registry'
 import { SKILL_CATEGORIES } from '@/skills/types'
-import type { SkillCategory } from '@/skills/types'
+import type { SkillCategory, BiblePreset } from '@/skills/types'
 import { SectionCard } from './common/section-card'
 
 // ---------------------------------------------------------------------------
@@ -11,6 +11,8 @@ import { SectionCard } from './common/section-card'
 interface SkillSelectorProps {
   /** 用于自动匹配的项目风格文本 */
   styleHint?: string
+  /** bible 技能包选中后，回调预设值以回填表单 */
+  onBiblePresetApply?: (preset: BiblePreset) => void
 }
 
 type CategoryState = {
@@ -24,7 +26,7 @@ const CATEGORIES = Object.keys(SKILL_CATEGORIES) as SkillCategory[]
 // 组件
 // ---------------------------------------------------------------------------
 
-export function SkillSelector({ styleHint = '' }: SkillSelectorProps) {
+export function SkillSelector({ styleHint = '', onBiblePresetApply }: SkillSelectorProps) {
   const [state, setState] = useState<Record<SkillCategory, CategoryState>>(() => {
     const init: Record<string, CategoryState> = {}
     for (const cat of CATEGORIES) {
@@ -44,18 +46,31 @@ export function SkillSelector({ styleHint = '' }: SkillSelectorProps) {
             ...prev,
             [cat]: { ...prev[cat], selectedId: matched.id },
           }))
+          // bible 分类自动匹配后也触发预设回填
+          if (cat === 'bible' && matched.preset && onBiblePresetApply) {
+            onBiblePresetApply(matched.preset)
+          }
         }
       }
     }
   }, [styleHint])  // 不监听 state，避免无限循环
 
+  /** 手动选择技能 */
   const handleSelect = useCallback((cat: SkillCategory, skillId: string | null) => {
     skillRegistry.setActiveForCategory(cat, skillId)
     setState((prev) => ({
       ...prev,
       [cat]: { ...prev[cat], selectedId: skillId, autoMode: false },
     }))
-  }, [])
+
+    // bible 分类选中后，触发预设回填
+    if (cat === 'bible' && skillId && onBiblePresetApply) {
+      const preset = skillRegistry.getBiblePreset(skillId)
+      if (preset) {
+        onBiblePresetApply(preset)
+      }
+    }
+  }, [onBiblePresetApply])
 
   const handleAutoToggle = useCallback((cat: SkillCategory) => {
     setState((prev) => {
@@ -63,6 +78,10 @@ export function SkillSelector({ styleHint = '' }: SkillSelectorProps) {
       if (newAutoMode && styleHint) {
         const matched = skillRegistry.autoMatchByCategory(cat, styleHint)
         if (matched) {
+          // bible 自动匹配后触发回填
+          if (cat === 'bible' && matched.preset && onBiblePresetApply) {
+            onBiblePresetApply(matched.preset)
+          }
           return {
             ...prev,
             [cat]: { selectedId: matched.id, autoMode: true },
@@ -70,17 +89,16 @@ export function SkillSelector({ styleHint = '' }: SkillSelectorProps) {
         }
       }
       if (!newAutoMode) {
-        // 关闭自动时保持当前选择
         return { ...prev, [cat]: { ...prev[cat], autoMode: false } }
       }
       return { ...prev, [cat]: { ...prev[cat], autoMode: true } }
     })
-  }, [styleHint])
+  }, [styleHint, onBiblePresetApply])
 
   return (
     <SectionCard
       title="技能包配置"
-      description="为每个管线阶段选择技能包，或开启自动匹配"
+      description="为每个管线阶段选择技能包，或开启自动匹配。选择「项目圣经」技能包会自动回填上方表单。"
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
         {CATEGORIES.map((cat) => {

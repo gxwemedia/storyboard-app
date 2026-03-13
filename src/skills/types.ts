@@ -25,6 +25,13 @@ export interface SkillMeta {
   category: SkillCategory
 }
 
+/** Bible 分类技能包的表单预设值 */
+export interface BiblePreset {
+  style: string
+  colorScript: string
+  forbidden: string
+}
+
 /** L1 + L2: 完整技能 */
 export interface Skill {
   /** 技能 ID（= 目录名） */
@@ -35,4 +42,6 @@ export interface Skill {
   instructions: string
   /** 来源 */
   source: 'builtin' | 'user'
+  /** Bible 分类技能包的表单预设（仅 bible 分类有值） */
+  preset?: BiblePreset
 }

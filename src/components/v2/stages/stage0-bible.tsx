@@ -1,5 +1,6 @@
 import React from 'react'
 import type { ProjectBible } from '@/types'
+import type { BiblePreset } from '@/skills/types'
 import { SectionCard } from '../common/section-card'
 import { InputField } from '../common/input-field'
 import { SkillSelector } from '../skill-selector'
@@ -10,11 +11,24 @@ interface Stage0BibleProps {
 }
 
 export function Stage0Bible({ bible, onUpdate }: Stage0BibleProps) {
+  /** bible 技能包选中后，自动回填表单 */
+  const handleBiblePreset = (preset: BiblePreset) => {
+    onUpdate('style', preset.style)
+    onUpdate('colorScript', preset.colorScript)
+    onUpdate('forbidden', preset.forbidden)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* 技能包选择器 — 放在最前面，选择后回填下方表单 */}
+      <SkillSelector
+        styleHint={bible.style}
+        onBiblePresetApply={handleBiblePreset}
+      />
+
       <SectionCard 
         title="项目圣经 · 基础设定"
-        description="定义项目的视觉风格、色彩基调和技术约束"
+        description="定义项目的视觉风格、色彩基调和技术约束。选择上方「项目圣经」技能包可自动填充，你也可以手动修改。"
       >
         <div className="form-section">
           <h4 className="form-section-title">视觉风格定义</h4>
@@ -78,13 +92,10 @@ export function Stage0Bible({ bible, onUpdate }: Stage0BibleProps) {
             <strong style={{ fontSize: '0.875rem', color: 'var(--color-text-primary)' }}>决策提示</strong>
           </div>
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-            先定调，再让所有节点服从。项目圣像是所有后续阶段的"Ground Truth"，确保角色、场景、镜头语言都围绕这个核心展开。
+            先选技能包快速定调，再微调表单细节。表单内容是所有后续阶段的"Ground Truth"，技能包的深度规则（光影、材质等）会额外追加到 AI 指令中。
           </p>
         </div>
       </SectionCard>
-
-      {/* 技能包选择器 */}
-      <SkillSelector styleHint={bible.style} />
     </div>
   )
 }
