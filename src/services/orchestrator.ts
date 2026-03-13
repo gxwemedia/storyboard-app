@@ -7,7 +7,7 @@
 
 import type { AiMessage } from './ai-client'
 import { sendPrompt, sendImagePrompt } from './ai-client'
-import type { ImageGenSettings, ProjectBible, ShotSpec } from '@/types'
+import type { ImageAspectRatio, ImageGenSettings, ProjectBible, ShotSpec } from '@/types'
 import { aiShotSpecArraySchema, inferStructuredFields } from '@/schemas/shot-spec'
 import { generateGrayModel, generateGrayModelMock, type GrayModelStyle, type GrayModelResult } from './sdxl-client'
 import { skillPackRegistry } from '@/skills'
@@ -300,36 +300,70 @@ export async function generateDesignImage(
   consistencyPrompt?: string,
   imageSettings?: ImageGenSettings,
 ): Promise<ImageGenResult> {
-  const typeLabel = type === 'character' ? '角色' : '场景'
-  const visualRef = consistencyPrompt
-    ? `\n\n一致性视觉描述参考：${consistencyPrompt}`
-    : ''
-  const aspectRatio = imageSettings?.aspectRatio || (type === 'character' ? '9:16' : '16:9')
+  let prompt: string
+  let aspectRatio: string
   const imageSize = imageSettings?.imageSize || '1K'
 
-  const prompt = [
-    `请为以下${typeLabel}生成一张高质量、电影概念设定级别的图片：`,
-    '',
-    `${typeLabel}名称：${name}`,
-    `${typeLabel}描述：${description}`,
-    '',
-    `风格要求：${bible.style}`,
-    `色彩基调：${bible.colorScript}`,
-    `禁忌规则：${bible.forbidden}`,
-    visualRef,
-    '',
-    `要求：`,
-    `- 画面风格严格遵循上述风格要求`,
-    `- 构图清晰，主体突出`,
-    `- 输出宽高比：${aspectRatio}`,
-    `- 输出清晰度：${imageSize}`,
-    type === 'character'
-      ? '- 角色正面或3/4侧面，展示完整服饰和体态特征'
-      : '- 场景广角展示，包含典型光照和氛围',
-    `- 适合作为影视分镜的参考概念设定图`,
-  ].join('\n')
+  if (type === 'character') {
+    // 工业级三视图转台 prompt
+    const visualRef = consistencyPrompt
+      ? `\n\n角色一致性视觉描述参考：${consistencyPrompt}`
+      : ''
+    aspectRatio = '16:9' // 横构图适合三视图排列
 
-  const response = await sendImagePrompt(prompt, { timeoutMs: 120_000, aspectRatio, imageSize })
+    prompt = [
+      `Professional live-action character design sheet, photorealistic, 8K UHD,`,
+      `clean multi-panel layout on neutral gray background,`,
+      `left panel: high-detail facial closeup portrait,`,
+      `right panels: full-body front view, profile view, back view,`,
+      `nine-head-tall proportions, consistent design across all views,`,
+      `neutral global illumination, RAW photography quality,`,
+      `NO anime, NO cartoon, NO cel-shading, NO fantasy background.`,
+      ``,
+      `角色名称：${name}`,
+      `角色描述：${description}`,
+      ``,
+      `风格要求：${bible.style}`,
+      `色彩基调：${bible.colorScript}`,
+      `禁忌规则：${bible.forbidden}`,
+      visualRef,
+      ``,
+      `要求：`,
+      `- 纯净工业灰色背景，带细微物理阴影`,
+      `- 左侧为高清脸部特写大头照`,
+      `- 右侧为正面、侧面、背面三个全身站姿视图`,
+      `- 所有视角比例严格一致`,
+      `- 禁止出现任何场景/环境背景`,
+      `- 写实摄影风格，禁止动漫化`,
+    ].join('\n')
+  } else {
+    // 场景图保持原有逻辑
+    const visualRef = consistencyPrompt
+      ? `\n\n一致性视觉描述参考：${consistencyPrompt}`
+      : ''
+    aspectRatio = imageSettings?.aspectRatio || '16:9'
+
+    prompt = [
+      `请为以下场景生成一张高质量、电影概念设定级别的图片：`,
+      ``,
+      `场景名称：${name}`,
+      `场景描述：${description}`,
+      ``,
+      `风格要求：${bible.style}`,
+      `色彩基调：${bible.colorScript}`,
+      `禁忌规则：${bible.forbidden}`,
+      visualRef,
+      ``,
+      `要求：`,
+      `- 画面风格严格遵循上述风格要求`,
+      `- 构图清晰，主体突出`,
+      `- 输出宽高比：${aspectRatio}`,
+      `- 场景广角展示，包含典型光照和氛围`,
+      `- 适合作为影视分镜的参考概念设定图`,
+    ].join('\n')
+  }
+
+  const response = await sendImagePrompt(prompt, { timeoutMs: 120_000, aspectRatio: aspectRatio as ImageAspectRatio, imageSize })
 
   if (response.imageUrls && response.imageUrls.length > 0) {
     return { imageUrl: response.imageUrls[0] }

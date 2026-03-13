@@ -21,9 +21,9 @@ const DEFAULT_SCENE_IMAGE_SETTINGS = {
 }
 
 const initialCharacters: CharacterDesign[] = [
-  { id: 'char-qinmu', name: '秦牧', description: '主角，年轻猎魔人/牧童，机敏沉稳，随身携带饕餮袋', locked: false, ...DEFAULT_CHARACTER_IMAGE_SETTINGS },
-  { id: 'char-longqilin', name: '龙麒麟', description: '秦牧的坐骑，外形如麒麟，能日行千里但贪吃，性格憨厚', locked: false, ...DEFAULT_CHARACTER_IMAGE_SETTINGS },
-  { id: 'char-siyouyou', name: '司幼幽（婆婆）', description: '秦牧的养祖母，美丽女子外貌，体内镇压着厉教主，白天由她主导', locked: false, ...DEFAULT_CHARACTER_IMAGE_SETTINGS },
+  { id: 'char-qinmu', name: '秦牧', description: '主角，年轻猎魔人/牧童，机敏沉稳，随身携带饕餮袋', category: 'character', locked: false, ...DEFAULT_CHARACTER_IMAGE_SETTINGS },
+  { id: 'char-longqilin', name: '龙麒麟', description: '秦牧的坐骑，外形如麒麟，能日行千里但贪吃，性格憨厚', category: 'character', locked: false, ...DEFAULT_CHARACTER_IMAGE_SETTINGS },
+  { id: 'char-siyouyou', name: '司幼幽（婆婆）', description: '秦牧的养祖母，美丽女子外貌，体内镇压着厉教主，白天由她主导', category: 'character', locked: false, ...DEFAULT_CHARACTER_IMAGE_SETTINGS },
 ]
 
 const initialScenes: SceneDesign[] = [
@@ -203,6 +203,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         id: `char-${crypto.randomUUID().slice(0, 8)}`,
         name: '新角色',
         description: '请填写角色描述',
+        category: 'character' as const,
         locked: false,
         ...DEFAULT_CHARACTER_IMAGE_SETTINGS,
       }],

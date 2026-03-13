@@ -1,7 +1,6 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import type { CharacterDesign, SceneDesign, ImageAspectRatio, ImageSize } from '@/types'
 import { SectionCard } from '../common/section-card'
-import { InputField } from '../common/input-field'
 import { Button } from '../common/button'
 import { Badge } from '../common/badge'
 
@@ -22,6 +21,278 @@ interface Stage2ConceptProps {
   onRemoveScene: (id: string) => void
   isGenerating: boolean
 }
+
+// ---------------------------------------------------------------------------
+// 角色卡组件（参照"主体库"卡片式设计）
+// ---------------------------------------------------------------------------
+
+function CharacterCard({
+  char,
+  onUpdate,
+  onToggleLock,
+  onRunConsistency,
+  onRunImageGen,
+  onRemove,
+  isGenerating,
+}: {
+  char: CharacterDesign
+  onUpdate: (id: string, field: 'name' | 'description', value: string) => void
+  onToggleLock: (id: string) => void
+  onRunConsistency: (id: string) => void
+  onRunImageGen: (id: string) => void
+  onRemove: (id: string) => void
+  isGenerating: boolean
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // 获取主展示图（优先级：上传图稿 > 三视图 > 旧 imageUrl）
+  const mainImage = char.uploadedSheetUrl || char.turnaroundUrl || char.imageUrl
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = URL.createObjectURL(file)
+    // 通过 store 更新（通知父组件）
+    // 这里直接修改 DOM 回传
+    const event = new CustomEvent('character-upload', { detail: { id: char.id, url } })
+    window.dispatchEvent(event)
+  }
+
+  const categoryLabels = {
+    character: { text: '角色', color: '#6366f1' },
+    scene: { text: '场景', color: '#10b981' },
+    style: { text: '风格', color: '#f59e0b' },
+  }
+  const catInfo = categoryLabels[char.category || 'character']
+
+  return (
+    <div style={{
+      background: 'var(--color-bg-elevated)',
+      borderRadius: '0.75rem',
+      border: char.locked ? '2px solid var(--color-success)' : '1px solid var(--color-border-base)',
+      overflow: 'hidden',
+      transition: 'all 200ms ease',
+    }}>
+      {/* 顶部：图片区域（左侧主图 + 右侧上传/附加） */}
+      <div style={{ display: 'flex', height: '240px', borderBottom: '1px solid var(--color-border-subtle)' }}>
+        {/* 左侧：主图展示 / 点击上传 */}
+        <div
+          onClick={() => !mainImage && fileInputRef.current?.click()}
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: mainImage ? 'default' : 'pointer',
+            backgroundColor: mainImage ? 'transparent' : 'var(--color-bg-base)',
+            borderRight: '1px solid var(--color-border-subtle)',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          {mainImage ? (
+            <img
+              src={mainImage}
+              alt={char.name}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            <>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" strokeWidth="1.5" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <span style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--color-text-tertiary)' }}>
+                点击上传
+              </span>
+            </>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleUpload}
+            style={{ display: 'none' }}
+          />
+        </div>
+
+        {/* 右侧：附加视角图 / AI 三视图生成按钮 */}
+        <div style={{
+          width: '50%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+          backgroundColor: 'var(--color-bg-base)',
+          gap: '0.75rem',
+        }}>
+          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+            三视图转台
+          </span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', textAlign: 'center' }}>
+            灰色背景 · 正/侧/背 + 脸部特写
+          </span>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => onRunImageGen(char.id)}
+            disabled={isGenerating || !char.description || char.description === '请填写角色描述'}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21,15 16,10 5,21" />
+            </svg>
+            AI 生成三视图
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="17,8 12,3 7,8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            上传设计图稿
+          </Button>
+        </div>
+      </div>
+
+      {/* 底部：信息区 */}
+      <div style={{ padding: '1rem' }}>
+        {/* 名称 + 分类标签 行 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <input
+            className="form-input"
+            value={char.name}
+            onChange={(e) => onUpdate(char.id, 'name', e.target.value)}
+            placeholder="角色名称（必填）"
+            maxLength={20}
+            style={{
+              flex: 1,
+              fontSize: '0.9375rem',
+              fontWeight: 600,
+              border: 'none',
+              background: 'transparent',
+              padding: '0.25rem 0',
+              borderBottom: '1px solid var(--color-border-subtle)',
+            }}
+          />
+          <span style={{
+            fontSize: '0.6875rem',
+            color: 'var(--color-text-tertiary)',
+          }}>
+            {char.name.length} / 20
+          </span>
+        </div>
+
+        {/* 分类标签 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={catInfo.color} strokeWidth="2">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+            <line x1="7" y1="7" x2="7.01" y2="7" />
+          </svg>
+          {['character', 'scene', 'style'].map((cat) => {
+            const info = categoryLabels[cat as keyof typeof categoryLabels]
+            const isActive = (char.category || 'character') === cat
+            return (
+              <span
+                key={cat}
+                style={{
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.75rem',
+                  fontWeight: isActive ? 600 : 400,
+                  backgroundColor: isActive ? info.color : 'transparent',
+                  color: isActive ? 'white' : 'var(--color-text-tertiary)',
+                  border: isActive ? 'none' : '1px solid var(--color-border-subtle)',
+                  cursor: 'pointer',
+                }}
+              >
+                {info.text}
+              </span>
+            )
+          })}
+        </div>
+
+        {/* 描述 */}
+        <div style={{ marginBottom: '0.75rem' }}>
+          <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '0.375rem' }}>
+            角色描述（必填）
+          </label>
+          <div style={{ position: 'relative' }}>
+            <textarea
+              className="form-textarea"
+              value={char.description}
+              onChange={(e) => {
+                if (e.target.value.length <= 200) {
+                  onUpdate(char.id, 'description', e.target.value)
+                }
+              }}
+              placeholder="请描述角色的核心特征，如「一个冷峻的银甲猎魔人」。还可以描述希望保留的细节。不超过 200 字"
+              rows={3}
+              style={{ paddingBottom: '1.75rem' }}
+            />
+            <div style={{
+              position: 'absolute',
+              bottom: '0.5rem',
+              right: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+            }}>
+              <span style={{ fontSize: '0.75rem', color: char.description.length > 180 ? 'var(--color-warning)' : 'var(--color-text-tertiary)' }}>
+                {char.description.length} / 200
+              </span>
+              <button
+                onClick={() => onRunConsistency(char.id)}
+                disabled={isGenerating}
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--color-primary)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: isGenerating ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  opacity: isGenerating ? 0.5 : 1,
+                }}
+              >
+                ✨ 智能描述
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 操作栏 */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Badge variant={char.locked ? 'success' : 'neutral'} style={{ fontSize: '0.6875rem' }}>
+              {char.locked ? '🔒 已锁定' : '🔓 未锁定'}
+            </Badge>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Button variant="outline" size="sm" onClick={() => onToggleLock(char.id)}>
+              {char.locked ? '解锁' : '锁定'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => onRemove(char.id)} style={{ color: 'var(--color-error)' }}>
+              删除
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 主组件
+// ---------------------------------------------------------------------------
 
 export function Stage2Concept({
   characters,
@@ -44,157 +315,78 @@ export function Stage2Concept({
   const sizeOptions: ImageSize[] = ['512px', '1K', '2K']
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      {/* 角色设计卡片 */}
-      <SectionCard 
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* 角色设计区 — 卡片网格 */}
+      <SectionCard
         title="角色概念设计"
-        description="定义关键角色的视觉特征和一致性参数"
+        description="定义关键角色的视觉特征 · 支持 AI 三视图生成或直接上传设计图稿"
       >
-        <div className="flex justify-between items-center" style={{ marginBottom: '1rem' }}>
-          <span className="text-secondary text-sm">{characters.length} 个角色</span>
-          <Button variant="outline" size="sm" onClick={onAddCharacter}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            添加角色
-          </Button>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {characters.map((char) => (
-            <div 
-              key={char.id}
-              className="card"
-              style={{ padding: '1.25rem', borderLeft: char.locked ? '3px solid var(--color-success)' : '3px solid var(--color-border-base)' }}
-            >
-              <div className="flex justify-between items-center" style={{ marginBottom: '1rem' }}>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label">角色名称</label>
-                  <input
-                    className="form-input"
-                    value={char.name}
-                    onChange={(e) => onUpdateCharacter(char.id, 'name', e.target.value)}
-                    placeholder="角色名称"
-                  />
-                  <span className="form-label-help">定义角色的核心身份</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={char.locked ? 'success' : 'neutral'}>
-                    {char.locked ? '已锁定' : '未锁定'}
-                  </Badge>
-                  <Button variant="outline" size="sm" onClick={() => onToggleCharacterLock(char.id)}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                      <path d="M7 11V7a5 5 0 0110 0v4" />
-                    </svg>
-                    {char.locked ? '解锁' : '锁定'}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => onRemoveCharacter(char.id)}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="3,6 5,6 21,6" />
-                      <path d="M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1 2-2h4a2,2 0 0,1 2,2v2" />
-                    </svg>
-                  </Button>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label className="form-label">角色描述</label>
-                <textarea
-                  className="form-textarea"
-                  value={char.description}
-                  onChange={(e) => onUpdateCharacter(char.id, 'description', e.target.value)}
-                  placeholder="描述角色的外貌、性格、服装等关键特征..."
-                  rows={3}
-                />
-              </div>
-
-              {char.imageUrl && (
-                <div style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">概念图预览</label>
-                  <div style={{ 
-                    borderRadius: '0.5rem',
-                    overflow: 'hidden',
-                    border: '1px solid var(--color-border-subtle)',
-                    maxHeight: '300px'
-                  }}>
-                    <img 
-                      src={char.imageUrl} 
-                      alt={char.name}
-                      style={{ width: '100%', height: 'auto', display: 'block' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-subtle)' }}>
-                <label className="form-label">图片生成设置</label>
-                <div className="flex gap-4" style={{ marginBottom: '1rem' }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
-                      宽高比
-                    </label>
-                    <select
-                      className="form-select"
-                      value={char.imageAspectRatio}
-                      onChange={(e) => onUpdateCharacterImageSetting(char.id, 'imageAspectRatio', e.target.value as ImageAspectRatio)}
-                    >
-                      {aspectRatioOptions.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
-                      分辨率
-                    </label>
-                    <select
-                      className="form-select"
-                      value={char.imageSize}
-                      onChange={(e) => onUpdateCharacterImageSetting(char.id, 'imageSize', e.target.value as ImageSize)}
-                    >
-                      {sizeOptions.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => onRunConsistency('character', char.id)}
-                    disabled={isGenerating}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M14,9V5a3,3 0 0,0-3-3L5,12l6,6a3,3 0 0,0 3-3v-4" />
-                      <path d="M10,9V5a3,3 0 0,0-3-3L1,12l6,6a3,3 0 0,0 3-3v-4" />
-                    </svg>
-                    生成一致性描述
-                  </Button>
-                  <Button 
-                    variant="primary" 
-                    size="sm"
-                    onClick={() => onRunImageGen('character', char.id)}
-                    disabled={isGenerating}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <polyline points="21,15 16,10 5,21" />
-                    </svg>
-                    生成概念图
-                  </Button>
-                </div>
-              </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+          gap: '1rem',
+          marginBottom: '1rem',
+        }}>
+          {/* 新建角色卡 */}
+          <div
+            onClick={onAddCharacter}
+            style={{
+              border: '2px dashed var(--color-border-base)',
+              borderRadius: '0.75rem',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '320px',
+              cursor: 'pointer',
+              backgroundColor: 'transparent',
+              transition: 'border-color 200ms ease, background-color 200ms ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-primary)'
+              e.currentTarget.style.backgroundColor = 'var(--color-primary-light)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-border-base)'
+              e.currentTarget.style.backgroundColor = 'transparent'
+            }}
+          >
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'var(--color-bg-base)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '0.75rem',
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
             </div>
+            <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text-secondary)' }}>新建角色</span>
+          </div>
+
+          {/* 角色卡列表 */}
+          {characters.map((char) => (
+            <CharacterCard
+              key={char.id}
+              char={char}
+              onUpdate={onUpdateCharacter}
+              onToggleLock={onToggleCharacterLock}
+              onRunConsistency={(id) => onRunConsistency('character', id)}
+              onRunImageGen={(id) => onRunImageGen('character', id)}
+              onRemove={onRemoveCharacter}
+              isGenerating={isGenerating}
+            />
           ))}
         </div>
       </SectionCard>
 
-      {/* 场景设计卡片 */}
-      <SectionCard 
+      {/* 场景设计区（保留原有样式） */}
+      <SectionCard
         title="场景概念设计"
         description="定义关键场景的环境特征和氛围"
       >
@@ -211,7 +403,7 @@ export function Stage2Concept({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {scenes.map((scene) => (
-            <div 
+            <div
               key={scene.id}
               className="card"
               style={{ padding: '1.25rem', borderLeft: scene.locked ? '3px solid var(--color-success)' : '3px solid var(--color-border-base)' }}
@@ -225,17 +417,12 @@ export function Stage2Concept({
                     onChange={(e) => onUpdateScene(scene.id, 'name', e.target.value)}
                     placeholder="场景名称"
                   />
-                  <span className="form-label-help">定义场景的地理位置和环境</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={scene.locked ? 'success' : 'neutral'}>
                     {scene.locked ? '已锁定' : '未锁定'}
                   </Badge>
                   <Button variant="outline" size="sm" onClick={() => onToggleSceneLock(scene.id)}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                      <path d="M7 11V7a5 5 0 0110 0v4" />
-                    </svg>
                     {scene.locked ? '解锁' : '锁定'}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => onRemoveScene(scene.id)}>
@@ -261,14 +448,14 @@ export function Stage2Concept({
               {scene.imageUrl && (
                 <div style={{ marginBottom: '1rem' }}>
                   <label className="form-label">概念图预览</label>
-                  <div style={{ 
+                  <div style={{
                     borderRadius: '0.5rem',
                     overflow: 'hidden',
                     border: '1px solid var(--color-border-subtle)',
                     maxHeight: '300px'
                   }}>
-                    <img 
-                      src={scene.imageUrl} 
+                    <img
+                      src={scene.imageUrl}
                       alt={scene.name}
                       style={{ width: '100%', height: 'auto', display: 'block' }}
                     />
@@ -309,30 +496,21 @@ export function Stage2Concept({
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => onRunConsistency('scene', scene.id)}
                     disabled={isGenerating}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M14,9V5a3,3 0 0,0-3-3L5,12l6,6a3,3 0 0,0 3-3v-4" />
-                      <path d="M10,9V5a3,3 0 0,0-3-3L1,12l6,6a3,3 0 0,0 3-3v-4" />
-                    </svg>
-                    生成一致性描述
+                    ✨ 生成一致性描述
                   </Button>
-                  <Button 
-                    variant="primary" 
+                  <Button
+                    variant="primary"
                     size="sm"
                     onClick={() => onRunImageGen('scene', scene.id)}
                     disabled={isGenerating}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <polyline points="21,15 16,10 5,21" />
-                    </svg>
-                    生成概念图
+                    🖼️ 生成概念图
                   </Button>
                 </div>
               </div>
@@ -341,9 +519,9 @@ export function Stage2Concept({
         </div>
       </SectionCard>
 
-      <div style={{ 
-        padding: '1rem', 
-        backgroundColor: 'var(--color-warning-light)', 
+      <div style={{
+        padding: '1rem',
+        backgroundColor: 'var(--color-warning-light)',
         borderRadius: '0.5rem',
         border: '1px solid var(--color-warning)',
         display: 'flex',
@@ -360,7 +538,7 @@ export function Stage2Concept({
             决策提示
           </strong>
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-            不要让世界观在这一步漂。锁定角色和场景的一致性描述后，后续的分镜脚本将自动遵循这些约束。
+            不要让世界观在这一步漂。锁定角色和场景的一致性描述后，后续分镜将自动遵循这些约束。角色推荐使用 AI 三视图转台生成，确保跨镜头的外观一致性。
           </p>
         </div>
       </div>

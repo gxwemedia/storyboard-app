@@ -91,7 +91,16 @@ export interface CharacterDesign {
   id: string
   name: string
   description: string
+  /** 分类标签 */
+  category: 'character' | 'scene' | 'style'
+  /** 主概念图（兼容旧字段） */
   imageUrl?: string
+  /** 三视图转台（正/侧/背 + 脸部特写，灰色背景） */
+  turnaroundUrl?: string
+  /** 用户上传的自定义设计图稿 */
+  uploadedSheetUrl?: string
+  /** 附加视角图（最多 3 张） */
+  extraViewUrls?: string[]
   imageAspectRatio: ImageAspectRatio
   imageSize: ImageSize
   /** AI 反推的一致性 Prompt（用于后续分镜生成锁定外观） */
