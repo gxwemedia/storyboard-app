@@ -117,42 +117,72 @@ function CharacterCard({
           />
         </div>
 
-        {/* 右侧：附加视角图 / AI 三视图生成按钮 */}
+        {/* 右侧：三视图 / 表情 / 动态 生成区域 */}
         <div style={{
           width: '50%',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '1rem',
+          padding: '0.75rem',
           backgroundColor: 'var(--color-bg-base)',
-          gap: '0.75rem',
+          gap: '0.5rem',
+          overflowY: 'auto',
         }}>
-          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-            三视图转台
-          </span>
-          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', textAlign: 'center' }}>
-            灰色背景 · 正/侧/背 + 脸部特写
-          </span>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => onRunImageGen(char.id)}
-            disabled={isGenerating || !char.description || char.description === '请填写角色描述'}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21,15 16,10 5,21" />
-            </svg>
-            AI 生成三视图
-          </Button>
+          {/* 三视图转台 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {char.turnaroundUrl ? (
+              <img src={char.turnaroundUrl} alt="三视图" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--color-border-subtle)' }} />
+            ) : (
+              <div style={{ width: 40, height: 40, borderRadius: 4, border: '1px dashed var(--color-border-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>—</div>
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>三视图转台</div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-tertiary)' }}>正/侧/背 + 脸部特写</div>
+            </div>
+            <Button variant="primary" size="sm" onClick={() => onRunImageGen(char.id)} disabled={isGenerating || !char.description || char.description === '请填写角色描述'} style={{ fontSize: '0.6875rem', padding: '2px 8px' }}>
+              生成
+            </Button>
+          </div>
+
+          {/* 表情模组 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {char.expressionUrl ? (
+              <img src={char.expressionUrl} alt="表情" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--color-border-subtle)' }} />
+            ) : (
+              <div style={{ width: 40, height: 40, borderRadius: 4, border: '1px dashed var(--color-border-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>—</div>
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>表情模组</div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-tertiary)' }}>6 种情绪 · 写实面部</div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => onRunImageGen(char.id)} disabled={isGenerating || !char.turnaroundUrl} style={{ fontSize: '0.6875rem', padding: '2px 8px' }}>
+              生成
+            </Button>
+          </div>
+
+          {/* 动态姿态 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {char.dynamicPoseUrl ? (
+              <img src={char.dynamicPoseUrl} alt="姿态" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--color-border-subtle)' }} />
+            ) : (
+              <div style={{ width: 40, height: 40, borderRadius: 4, border: '1px dashed var(--color-border-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>—</div>
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>动态姿态</div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-tertiary)' }}>奔跑/跳跃/大笑/哭泣</div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => onRunImageGen(char.id)} disabled={isGenerating || !char.turnaroundUrl} style={{ fontSize: '0.6875rem', padding: '2px 8px' }}>
+              生成
+            </Button>
+          </div>
+
+          {/* 上传按钮 */}
           <Button
             variant="outline"
             size="sm"
             onClick={() => fileInputRef.current?.click()}
+            style={{ marginTop: '0.25rem', fontSize: '0.6875rem' }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
               <polyline points="17,8 12,3 7,8" />
               <line x1="12" y1="3" x2="12" y2="15" />

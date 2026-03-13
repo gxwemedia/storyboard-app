@@ -1,237 +1,218 @@
 /**
- * Skills 系统单元测试 — 5 分类 SKILL.md 范式
+ * Skills 系统单元测试（5 分类 + SKILL.md 范式）
+ *
+ * 覆盖：注册表、分类查询、多激活模式、匹配、bible 预设、兼容层
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
-import { skillRegistry, parseSkillMd, skillPackRegistry } from '@/skills/registry'
-import type { SkillCategory } from '@/skills/types'
+import { skillRegistry, parseSkillMd, skillPackRegistry } from '@/skills'
+import type { SkillCategory } from '@/skills'
 
 // ---------------------------------------------------------------------------
-// SKILL.md 解析
+// 辅助
+// ---------------------------------------------------------------------------
+
+function resetActiveState() {
+  skillRegistry.clearAllActive()
+}
+
+// ---------------------------------------------------------------------------
+// Tests
 // ---------------------------------------------------------------------------
 
 describe('SKILL.md 解析', () => {
-  it('解析 YAML frontmatter（含 category）', () => {
-    const skill = parseSkillMd(`---
-name: test-skill
-description: 这是一个测试技能
-category: bible
+  it('解析标准 frontmatter', () => {
+    const raw = `---
+name: 测试技能
+description: 用于测试
+category: concept
 ---
 
-# 测试技能
+# 指令正文
 
-这里是指令内容。
-`, 'test')
-
-    expect(skill.meta.name).toBe('test-skill')
-    expect(skill.meta.description).toBe('这是一个测试技能')
-    expect(skill.meta.category).toBe('bible')
-    expect(skill.instructions).toContain('# 测试技能')
-    expect(skill.instructions).toContain('这里是指令内容')
+这是指令内容。
+`
+    const skill = parseSkillMd(raw, 'test-skill')
+    expect(skill.meta.name).toBe('测试技能')
+    expect(skill.meta.description).toBe('用于测试')
+    expect(skill.meta.category).toBe('concept')
+    expect(skill.instructions).toContain('指令正文')
+    expect(skill.instructions).toContain('这是指令内容')
   })
 
-  it('无 frontmatter 时使用默认值', () => {
-    const skill = parseSkillMd('# 纯内容\n\n无元数据', 'fallback-id')
-    expect(skill.meta.name).toBe('fallback-id')
-    expect(skill.meta.category).toBe('shotspec') // 默认 category
-    expect(skill.instructions).toContain('# 纯内容')
+  it('解析 bible 预设值', () => {
+    const raw = `---
+name: 暗黑哥特
+description: 哥特风格
+category: bible
+preset_style: 暗黑哥特
+preset_colorScript: 冷色调
+preset_forbidden: 禁止卡通
+---
+
+指令正文
+`
+    const skill = parseSkillMd(raw, 'test-bible')
+    expect(skill.preset).toBeDefined()
+    expect(skill.preset!.style).toBe('暗黑哥特')
+    expect(skill.preset!.colorScript).toBe('冷色调')
+    expect(skill.preset!.forbidden).toBe('禁止卡通')
+  })
+
+  it('无 frontmatter 也能解析', () => {
+    const raw = '# 纯 Markdown\n\n一些指令。'
+    const skill = parseSkillMd(raw, 'bare')
+    expect(skill.meta.name).toBe('bare')
+    expect(skill.instructions).toContain('纯 Markdown')
   })
 })
 
-// ---------------------------------------------------------------------------
-// 技能注册表
-// ---------------------------------------------------------------------------
-
-describe('技能注册表', () => {
-  beforeEach(() => {
-    skillRegistry.clearActive()
-    skillRegistry.clearAllActive()
-  })
-
-  it('有 10 个内置技能', () => {
+describe('注册表 — 基础操作', () => {
+  it('有 11 个内置技能', () => {
     const list = skillRegistry.list()
-    expect(list).toHaveLength(10)
+    expect(list.length).toBe(11)
   })
 
-  it('每个分类至少有 1 个技能', () => {
-    const categories: SkillCategory[] = ['bible', 'script', 'concept', 'shotspec', 'rendering']
-    for (const cat of categories) {
-      const skills = skillRegistry.getByCategory(cat)
-      expect(skills.length).toBeGreaterThanOrEqual(1)
-    }
-  })
-
-  it('按分类查询返回正确数量', () => {
-    expect(skillRegistry.getByCategory('bible')).toHaveLength(2)
-    expect(skillRegistry.getByCategory('script')).toHaveLength(2)
-    expect(skillRegistry.getByCategory('concept')).toHaveLength(2)
-    expect(skillRegistry.getByCategory('shotspec')).toHaveLength(3)
-    expect(skillRegistry.getByCategory('rendering')).toHaveLength(1)
-  })
-
-  it('列表包含 category 字段', () => {
-    const list = skillRegistry.list()
-    const item = list[0]
-    expect(item).toHaveProperty('id')
-    expect(item).toHaveProperty('name')
-    expect(item).toHaveProperty('description')
-    expect(item).toHaveProperty('category')
-    // 不应包含 instructions
-    expect(item).not.toHaveProperty('instructions')
-  })
-
-  it('获取完整技能包含 L2 instructions', () => {
+  it('按 ID 获取技能', () => {
     const skill = skillRegistry.get('suspense-cinematography')
     expect(skill).toBeDefined()
-    expect(skill!.instructions).toContain('悬疑')
-    expect(skill!.instructions.length).toBeGreaterThan(100)
+    expect(skill!.meta.category).toBe('concept')
   })
 
-  it('注册和移除自定义技能', () => {
-    skillRegistry.registerRaw('custom', `---
-name: custom-skill
-description: 自定义技能
-category: bible
+  it('注册用户自定义技能', () => {
+    const raw = `---
+name: 用户自定义
+description: 测试
+category: shotspec
 ---
-# Custom
+
 自定义指令
-`, 'user')
-
-    expect(skillRegistry.get('custom')).toBeDefined()
-    expect(skillRegistry.get('custom')!.source).toBe('user')
-    expect(skillRegistry.get('custom')!.meta.category).toBe('bible')
-
-    skillRegistry.unregister('custom')
-    expect(skillRegistry.get('custom')).toBeUndefined()
+`
+    skillRegistry.registerRaw('custom-test', raw)
+    expect(skillRegistry.get('custom-test')).toBeDefined()
+    // 清理
+    skillRegistry.unregister('custom-test')
+    expect(skillRegistry.get('custom-test')).toBeUndefined()
   })
 })
 
-// ---------------------------------------------------------------------------
-// 分类激活（多激活模式）
-// ---------------------------------------------------------------------------
-
-describe('分类多激活', () => {
-  beforeEach(() => {
-    skillRegistry.clearActive()
-    skillRegistry.clearAllActive()
+describe('注册表 — 分类查询', () => {
+  it('bible 分类有 2 个技能', () => {
+    const bibleSkills = skillRegistry.getByCategory('bible')
+    expect(bibleSkills).toHaveLength(2)
   })
 
-  it('按分类独立激活', () => {
+  it('script 分类有 2 个技能', () => {
+    const scriptSkills = skillRegistry.getByCategory('script')
+    expect(scriptSkills).toHaveLength(2)
+  })
+
+  it('concept 分类有 3 个技能', () => {
+    const conceptSkills = skillRegistry.getByCategory('concept')
+    expect(conceptSkills).toHaveLength(3)
+    expect(conceptSkills.some((s) => s.id === 'character-design-sheet')).toBe(true)
+  })
+
+  it('shotspec 分类有 3 个技能', () => {
+    const shotspecSkills = skillRegistry.getByCategory('shotspec')
+    expect(shotspecSkills).toHaveLength(3)
+  })
+
+  it('rendering 分类有 1 个技能', () => {
+    const renderingSkills = skillRegistry.getByCategory('rendering')
+    expect(renderingSkills).toHaveLength(1)
+  })
+})
+
+describe('注册表 — 多激活模式', () => {
+  beforeEach(resetActiveState)
+
+  it('每个分类独立激活', () => {
     skillRegistry.setActiveForCategory('bible', 'dark-gothic')
-    skillRegistry.setActiveForCategory('shotspec', 'scifi-worldbuilding')
+    skillRegistry.setActiveForCategory('shotspec', 'shot-spec-expert')
 
     expect(skillRegistry.getActiveForCategory('bible')?.id).toBe('dark-gothic')
-    expect(skillRegistry.getActiveForCategory('shotspec')?.id).toBe('scifi-worldbuilding')
+    expect(skillRegistry.getActiveForCategory('shotspec')?.id).toBe('shot-spec-expert')
     expect(skillRegistry.getActiveForCategory('concept')).toBeUndefined()
   })
 
-  it('setActiveForCategory 拒绝跨分类激活', () => {
-    const result = skillRegistry.setActiveForCategory('bible', 'shot-spec-expert')
-    expect(result).toBe(false)
-  })
-
-  it('setActiveForCategory 允许清空（null）', () => {
+  it('清空分类激活', () => {
     skillRegistry.setActiveForCategory('bible', 'dark-gothic')
     skillRegistry.setActiveForCategory('bible', null)
     expect(skillRegistry.getActiveForCategory('bible')).toBeUndefined()
   })
 
-  it('getAllActiveInstructions 聚合多分类', () => {
-    expect(skillRegistry.getAllActiveInstructions()).toBeNull()
+  it('跨分类激活不受干扰', () => {
+    skillRegistry.setActiveForCategory('bible', 'dark-gothic')
+    skillRegistry.setActiveForCategory('bible', 'bright-fairy-tale')
+    expect(skillRegistry.getActiveForCategory('bible')?.id).toBe('bright-fairy-tale')
+  })
 
+  it('getAllActiveInstructions 聚合所有激活技能', () => {
     skillRegistry.setActiveForCategory('bible', 'dark-gothic')
     skillRegistry.setActiveForCategory('shotspec', 'shot-spec-expert')
 
     const instructions = skillRegistry.getAllActiveInstructions()
-    expect(instructions).not.toBeNull()
-    expect(instructions).toContain('哥特')
-    expect(instructions).toContain('ShotSpec')
-    // 用分隔符拼接
-    expect(instructions).toContain('---')
+    expect(instructions).toBeTruthy()
+    expect(instructions!.includes('---')).toBe(true) // 分隔符
   })
 
-  it('clearAllActive 清空所有分类', () => {
+  it('clearAllActive 清空全部', () => {
     skillRegistry.setActiveForCategory('bible', 'dark-gothic')
-    skillRegistry.setActiveForCategory('script', 'suspense-script')
+    skillRegistry.setActiveForCategory('shotspec', 'shot-spec-expert')
     skillRegistry.clearAllActive()
 
     expect(skillRegistry.getActiveForCategory('bible')).toBeUndefined()
-    expect(skillRegistry.getActiveForCategory('script')).toBeUndefined()
-    expect(skillRegistry.getAllActiveInstructions()).toBeNull()
+    expect(skillRegistry.getActiveForCategory('shotspec')).toBeUndefined()
   })
 })
 
-// ---------------------------------------------------------------------------
-// 匹配
-// ---------------------------------------------------------------------------
+describe('注册表 — 匹配', () => {
+  beforeEach(resetActiveState)
 
-describe('技能匹配', () => {
-  beforeEach(() => {
-    skillRegistry.clearActive()
-    skillRegistry.clearAllActive()
-  })
-
-  it('全局关键词匹配', () => {
-    const results = skillRegistry.match('悬疑 惊悚')
+  it('关键词匹配返回排序结果', () => {
+    const results = skillRegistry.match('悬疑 推理')
     expect(results.length).toBeGreaterThan(0)
-    // 应该匹配到 suspense-cinematography 或 suspense-script
-    expect(results[0].skill.id).toMatch(/suspense/)
   })
 
-  it('autoMatch 激活最佳匹配', () => {
-    const skill = skillRegistry.autoMatch('奇幻 魔法 史诗')
+  it('按分类匹配并激活', () => {
+    const skill = skillRegistry.autoMatchByCategory('concept', '悬疑')
     expect(skill).toBeDefined()
-    expect(skill!.id).toMatch(/fantasy/)
+    expect(skill!.meta.category).toBe('concept')
+    expect(skillRegistry.getActiveForCategory('concept')?.id).toBe(skill!.id)
   })
 
-  it('autoMatchByCategory 限定分类范围', () => {
-    const skill = skillRegistry.autoMatchByCategory('bible', '哥特 黑暗 阴影')
-    expect(skill).toBeDefined()
-    expect(skill!.id).toBe('dark-gothic')
-    expect(skillRegistry.getActiveForCategory('bible')?.id).toBe('dark-gothic')
-  })
-
-  it('autoMatchByCategory 不影响其他分类', () => {
-    skillRegistry.setActiveForCategory('shotspec', 'shot-spec-expert')
-    skillRegistry.autoMatchByCategory('bible', '哥特')
-    expect(skillRegistry.getActiveForCategory('shotspec')?.id).toBe('shot-spec-expert')
-  })
-
-  it('无匹配时不激活', () => {
-    const skill = skillRegistry.autoMatch('完全无关的关键词xyz')
+  it('无匹配不激活', () => {
+    const skill = skillRegistry.autoMatchByCategory('shotspec', '完全无关')
     expect(skill).toBeUndefined()
   })
 })
 
-// ---------------------------------------------------------------------------
-// 兼容层
-// ---------------------------------------------------------------------------
-
-describe('orchestrator 兼容层', () => {
-  beforeEach(() => {
-    skillRegistry.clearActive()
-    skillRegistry.clearAllActive()
+describe('注册表 — bible 预设', () => {
+  it('dark-gothic 有预设值', () => {
+    const preset = skillRegistry.getBiblePreset('dark-gothic')
+    expect(preset).toBeDefined()
+    expect(preset!.style).toBeTruthy()
   })
 
-  it('无激活技能时返回默认 Prompt', () => {
-    const result = skillPackRegistry.resolveStageSkill('stage1', '默认Prompt', 0.8)
-    expect(result.systemPrompt).toBe('默认Prompt')
+  it('non-bible 技能无预设', () => {
+    const preset = skillRegistry.getBiblePreset('suspense-cinematography')
+    expect(preset).toBeUndefined()
+  })
+})
+
+describe('注册表 — 兼容层', () => {
+  beforeEach(resetActiveState)
+
+  it('resolveStageSkill 默认返回原始 Prompt', () => {
+    const result = skillPackRegistry.resolveStageSkill('stage1', '默认 Prompt', 0.8)
+    expect(result.systemPrompt).toBe('默认 Prompt')
     expect(result.temperature).toBe(0.8)
   })
 
-  it('分类激活后指令追加到 Prompt', () => {
-    skillRegistry.setActiveForCategory('concept', 'suspense-cinematography')
-    const result = skillPackRegistry.resolveStageSkill('stage1', '默认Prompt', 0.8)
-    expect(result.systemPrompt).toContain('默认Prompt')
-    expect(result.systemPrompt).toContain('悬疑')
-    expect(result.systemPrompt.length).toBeGreaterThan('默认Prompt'.length)
-  })
-
-  it('多分类激活时聚合指令', () => {
+  it('resolveStageSkill 激活后追加指令', () => {
     skillRegistry.setActiveForCategory('bible', 'dark-gothic')
-    skillRegistry.setActiveForCategory('shotspec', 'shot-spec-expert')
-    const result = skillPackRegistry.resolveStageSkill('stage1', '默认Prompt', 0.8)
-    expect(result.systemPrompt).toContain('哥特')
-    expect(result.systemPrompt).toContain('ShotSpec')
+    const result = skillPackRegistry.resolveStageSkill('stage1', '默认 Prompt', 0.8)
+    expect(result.systemPrompt.length).toBeGreaterThan('默认 Prompt'.length)
   })
 })

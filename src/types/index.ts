@@ -97,6 +97,10 @@ export interface CharacterDesign {
   imageUrl?: string
   /** 三视图转台（正/侧/背 + 脸部特写，灰色背景） */
   turnaroundUrl?: string
+  /** 表情模组（6 种情绪，写实面部肌肉细节） */
+  expressionUrl?: string
+  /** 动态姿态（奔跑/跳跃/大笑/哭泣） */
+  dynamicPoseUrl?: string
   /** 用户上传的自定义设计图稿 */
   uploadedSheetUrl?: string
   /** 附加视角图（最多 3 张） */

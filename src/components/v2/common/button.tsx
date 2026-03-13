@@ -13,6 +13,7 @@ interface ButtonProps {
   loading?: boolean
   className?: string
   icon?: React.ReactNode
+  style?: React.CSSProperties
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
@@ -43,6 +44,7 @@ export function Button({
   loading = false,
   className = '',
   icon,
+  style,
 }: ButtonProps) {
   return (
     <button
@@ -50,6 +52,7 @@ export function Button({
       className={`btn ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
       onClick={onClick}
       disabled={disabled || loading}
+      style={style}
     >
       {loading ? (
         <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none">

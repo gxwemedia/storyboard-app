@@ -22,6 +22,7 @@ import epicFantasyScriptSkill from './packs/script/epic-fantasy-script/SKILL.md?
 // concept 分类
 import suspenseSkill from './packs/concept/suspense-cinematography/SKILL.md?raw'
 import realisticSkill from './packs/concept/realistic-drama/SKILL.md?raw'
+import charDesignSheetSkill from './packs/concept/character-design-sheet/SKILL.md?raw'
 // shotspec 分类
 import shotSpecSkill from './packs/shotspec/shot-spec-expert/SKILL.md?raw'
 import fantasySkill from './packs/shotspec/epic-fantasy-visual/SKILL.md?raw'
@@ -98,6 +99,7 @@ class SkillRegistry {
     // concept
     this.register(parseSkillMd(suspenseSkill, 'suspense-cinematography'))
     this.register(parseSkillMd(realisticSkill, 'realistic-drama'))
+    this.register(parseSkillMd(charDesignSheetSkill, 'character-design-sheet'))
     // shotspec
     this.register(parseSkillMd(shotSpecSkill, 'shot-spec-expert'))
     this.register(parseSkillMd(fantasySkill, 'epic-fantasy-visual'))
