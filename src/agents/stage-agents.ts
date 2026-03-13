@@ -194,7 +194,17 @@ export const conceptAgent: StageAgent = {
 
 const BASE_PROMPT_SHOTSPEC = `你是一位专业的分镜导演兼摄影指导，服务于工业级分镜制片管线。
 将剧本拆解为独立的分镜卡片（Shot），每张卡片包含精确的专业参数。
-输出严格 JSON 数组，3-6 个镜头，scale/focalLength/keyLight 从枚举值选择。`
+
+输出 JSON 数组，每个元素必须包含以下字段：
+- shotCode, sceneId（场次标识，同场次共享光影氛围）
+- description（自然语言描述）
+- imagePrompt（中英双语 AI 合图提示词，角色用 @名称 引用）
+- videoPrompt（中英双语视频提示词，含表演+运镜，角色用 @名称 引用）
+- dialogue（对白台词）, soundEffect（音效描述）
+- scale/focalLength/keyLight 从枚举值选择
+- notes（备注）, duration（秒数，建议 2-8）
+
+输出 3-6 个镜头，纯 JSON 数组。`
 
 export const shotSpecAgent: StageAgent = {
   name: '分镜脚本 Agent',

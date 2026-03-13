@@ -50,6 +50,21 @@ export interface ShotSpec {
   keyLight: KeyLightStyle
   axisAnchor: string
   continuityLock: string
+  // V7 分镜增强字段
+  /** 场次标识（同场次共享光影氛围） */
+  sceneId: string
+  /** AI 合成图片提示词（中英双语，用 @角色名 引用主体） */
+  imagePrompt: string
+  /** 生成视频提示词（含表演动作 + 运镜描述，中英双语，用 @角色名 引用主体） */
+  videoPrompt: string
+  /** 角色对白（当前镜头台词） */
+  dialogue: string
+  /** 音效描述（环境音、动效） */
+  soundEffect: string
+  /** 备注栏（导演批注、特殊要求） */
+  notes: string
+  /** 镜头时长估算（秒） */
+  duration: number
 }
 
 export interface OutputFrame {

@@ -57,6 +57,14 @@ export const aiShotSpecSchema = z.object({
   keyLight: z.enum(KEY_LIGHT_STYLES).optional(),
   axisAnchor: z.string().optional(),
   continuityLock: z.string().optional(),
+  // V7 分镜增强字段
+  sceneId: z.string().optional(),
+  imagePrompt: z.string().optional(),
+  videoPrompt: z.string().optional(),
+  dialogue: z.string().optional(),
+  soundEffect: z.string().optional(),
+  notes: z.string().optional(),
+  duration: z.number().optional(),
 })
 
 /** AI 返回的 ShotSpec 数组 */
@@ -77,6 +85,14 @@ export const fullShotSpecSchema = z.object({
   keyLight: z.enum(KEY_LIGHT_STYLES),
   axisAnchor: z.string().default(''),
   continuityLock: z.string().default(''),
+  // V7
+  sceneId: z.string().default(''),
+  imagePrompt: z.string().default(''),
+  videoPrompt: z.string().default(''),
+  dialogue: z.string().default(''),
+  soundEffect: z.string().default(''),
+  notes: z.string().default(''),
+  duration: z.number().default(3),
 })
 
 // ---------------------------------------------------------------------------
