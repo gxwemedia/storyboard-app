@@ -374,7 +374,7 @@ function SceneCard({
       transition: 'all 200ms ease',
     }}>
       {/* 顶部：图片区域 */}
-      <div style={{ display: 'flex', height: '220px', borderBottom: '1px solid var(--color-border-subtle)' }}>
+      <div style={{ display: 'flex', height: '240px', borderBottom: '1px solid var(--color-border-subtle)' }}>
         {/* 左侧：主图 */}
         <div
           onClick={() => !mainImage && mainInputRef.current?.click()}
@@ -408,60 +408,81 @@ function SceneCard({
           <input ref={mainInputRef} type="file" accept="image/*" onChange={handleMainUpload} style={{ display: 'none' }} />
         </div>
 
-        {/* 右侧：3 张参考图网格 */}
+        {/* 右侧：参考图行列表（与角色卡一致） */}
         <div style={{
-          width: '45%',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gridTemplateRows: '1fr 1fr',
-          gap: '4px',
-          padding: '4px',
+          width: '50%',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '0.75rem',
           backgroundColor: 'var(--color-bg-base)',
+          gap: '0.5rem',
+          overflowY: 'auto',
         }}>
-          {[0, 1, 2].map((idx) => (
-            <div
-              key={idx}
-              onClick={() => !refs[idx] && refInputRef.current?.click()}
-              style={{
-                borderRadius: '6px',
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: refs[idx] ? 'default' : 'pointer',
-                border: '1px dashed var(--color-border-base)',
-                backgroundColor: refs[idx] ? 'transparent' : 'var(--color-bg-elevated)',
-                fontSize: '0.6875rem',
-                color: 'var(--color-text-disabled)',
-              }}
-            >
-              {refs[idx] ? (
-                <img src={refs[idx]} alt={`参考${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <span>参考{idx + 1}</span>
-              )}
+          {/* 参考图 1 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {refs[0] ? (
+              <img src={refs[0]} alt="参考1" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--color-border-subtle)' }} />
+            ) : (
+              <div style={{ width: 40, height: 40, borderRadius: 4, border: '1px dashed var(--color-border-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>—</div>
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>参考图 1</div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-tertiary)' }}>人物 · 场景匹配</div>
             </div>
-          ))}
-          {/* 第四格：操作 */}
-          <div style={{
-            borderRadius: '6px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '4px',
-            backgroundColor: 'var(--color-bg-elevated)',
-          }}>
-            <Button variant="primary" size="sm" onClick={() => onRunImageGen(scene.id)} disabled={isGenerating || !scene.description} style={{ fontSize: '0.625rem', padding: '2px 6px' }}>
-              AI 生成
-            </Button>
-            <button
-              onClick={() => mainInputRef.current?.click()}
-              style={{ fontSize: '0.625rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              上传图片
+            <button onClick={() => refInputRef.current?.click()} disabled={refs.length >= 3} style={{ fontSize: '0.6875rem', padding: '2px 8px', borderRadius: 4, border: '1px solid var(--color-border-base)', background: refs[0] ? 'var(--color-bg-elevated)' : 'var(--color-primary)', color: refs[0] ? 'var(--color-text-secondary)' : 'white', cursor: 'pointer' }}>
+              {refs[0] ? '替换' : '上传'}
             </button>
           </div>
+
+          {/* 参考图 2 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {refs[1] ? (
+              <img src={refs[1]} alt="参考2" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--color-border-subtle)' }} />
+            ) : (
+              <div style={{ width: 40, height: 40, borderRadius: 4, border: '1px dashed var(--color-border-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>—</div>
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>参考图 2</div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-tertiary)' }}>氛围 · 光影参考</div>
+            </div>
+            <button onClick={() => refInputRef.current?.click()} disabled={refs.length >= 3 && !!refs[1]} style={{ fontSize: '0.6875rem', padding: '2px 8px', borderRadius: 4, border: '1px solid var(--color-border-base)', background: refs[1] ? 'var(--color-bg-elevated)' : 'var(--color-primary)', color: refs[1] ? 'var(--color-text-secondary)' : 'white', cursor: 'pointer' }}>
+              {refs[1] ? '替换' : '上传'}
+            </button>
+          </div>
+
+          {/* 参考图 3 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {refs[2] ? (
+              <img src={refs[2]} alt="参考3" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--color-border-subtle)' }} />
+            ) : (
+              <div style={{ width: 40, height: 40, borderRadius: 4, border: '1px dashed var(--color-border-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>—</div>
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>参考图 3</div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-tertiary)' }}>材质 · 纹理细节</div>
+            </div>
+            <button onClick={() => refInputRef.current?.click()} disabled={refs.length >= 3 && !!refs[2]} style={{ fontSize: '0.6875rem', padding: '2px 8px', borderRadius: 4, border: '1px solid var(--color-border-base)', background: refs[2] ? 'var(--color-bg-elevated)' : 'var(--color-primary)', color: refs[2] ? 'var(--color-text-secondary)' : 'white', cursor: 'pointer' }}>
+              {refs[2] ? '替换' : '上传'}
+            </button>
+          </div>
+
+          {/* AI 生成 + 上传 按钮 */}
+          <Button variant="primary" size="sm" onClick={() => onRunImageGen(scene.id)} disabled={isGenerating || !scene.description} style={{ fontSize: '0.6875rem', padding: '2px 8px', marginTop: '0.25rem' }}>
+            AI 生成概念图
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => mainInputRef.current?.click()}
+            style={{ fontSize: '0.6875rem' }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="17,8 12,3 7,8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            上传场景图稿
+          </Button>
           <input ref={refInputRef} type="file" accept="image/*" onChange={handleRefUpload} style={{ display: 'none' }} />
         </div>
       </div>
