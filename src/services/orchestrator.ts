@@ -248,13 +248,43 @@ export async function orchestrateStage2Consistency(
   type: 'character' | 'scene',
   name: string,
   description: string,
+  imageUrls?: string[],
 ): Promise<Stage2ConsistencyResult> {
   const stageKey = type === 'character' ? 'stage2Character' as const : 'stage2Scene' as const
   const defaultPrompt = type === 'character' ? STAGE2_CHARACTER_PROMPT : STAGE2_SCENE_PROMPT
   const label = type === 'character' ? '角色' : '场景'
 
+  // 有图片时追加视觉分析指令
+  const visionAppend = (imageUrls && imageUrls.length > 0)
+    ? `\n\n【重要】用户提供了参考图片，请结合图片中的视觉信息进行分析。仔细观察图中的面部特征、服装材质、色彩搭配、光影效果、空间结构等细节，将这些视觉信息融入你的一致性描述中。`
+    : ''
+
   // 技能包解析
-  const skill = skillPackRegistry.resolveStageSkill(stageKey, defaultPrompt, 0.7)
+  const skill = skillPackRegistry.resolveStageSkill(stageKey, defaultPrompt + visionAppend, 0.7)
+
+  const textContent = [
+    '【项目视觉圣经 (Ground Truth Level 0)】',
+    `· 风格锁定：${bible.style}`,
+    `· 色彩脚本：${bible.colorScript}`,
+    `· 禁忌规则：${bible.forbidden}`,
+    '',
+    `【${label}信息】`,
+    `· 名称：${name}`,
+    `· 描述：${description}`,
+    '',
+    `请为「${name}」生成一致性视觉描述。`,
+  ].join('\n')
+
+  // 构建用户消息：有图片时用 Vision 图文混合格式
+  const userContent: AiMessage['content'] = (imageUrls && imageUrls.length > 0)
+    ? [
+        { type: 'text' as const, text: textContent },
+        ...imageUrls.map((url) => ({
+          type: 'image_url' as const,
+          image_url: { url, detail: 'high' as const },
+        })),
+      ]
+    : textContent
 
   const messages: AiMessage[] = [
     { role: 'system', content: skill.systemPrompt },
@@ -263,25 +293,12 @@ export async function orchestrateStage2Consistency(
       { role: 'user' as const, content: fs.input },
       { role: 'assistant' as const, content: fs.output },
     ]),
-    {
-      role: 'user',
-      content: [
-        '【项目视觉圣经 (Ground Truth Level 0)】',
-        `· 风格锁定：${bible.style}`,
-        `· 色彩脚本：${bible.colorScript}`,
-        `· 禁忌规则：${bible.forbidden}`,
-        '',
-        `【${label}信息】`,
-        `· 名称：${name}`,
-        `· 描述：${description}`,
-        '',
-        `请为「${name}」生成一致性视觉描述。`,
-      ].join('\n'),
-    },
+    { role: 'user', content: userContent },
   ]
 
   const response = await sendPrompt(messages, { temperature: skill.temperature })
-  return { consistencyPrompt: response.content.trim() }
+  const content = typeof response.content === 'string' ? response.content : ''
+  return { consistencyPrompt: content.trim() }
 }
 
 // ---------------------------------------------------------------------------

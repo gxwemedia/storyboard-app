@@ -51,9 +51,15 @@ const getImageConfig = () => {
 // Types
 // ---------------------------------------------------------------------------
 
+/** Vision 图文混合 content 单元 */
+export type VisionContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string; detail?: 'auto' | 'low' | 'high' } }
+
 export interface AiMessage {
   role: 'system' | 'user' | 'assistant'
-  content: string
+  /** 纯文本或图文混合（Vision） */
+  content: string | VisionContentPart[]
 }
 
 export interface AiRequestOptions {

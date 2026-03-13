@@ -11,6 +11,8 @@ interface Stage2ConceptProps {
   onUploadCharacterSheet: (id: string, url: string) => void
   onUpdateCharacterImageSetting: (id: string, field: 'imageAspectRatio' | 'imageSize', value: ImageAspectRatio | ImageSize) => void
   onUpdateScene: (id: string, field: 'name' | 'description', value: string) => void
+  onUploadSceneSheet: (id: string, url: string) => void
+  onAddSceneReference: (id: string, url: string) => void
   onUpdateSceneImageSetting: (id: string, field: 'imageAspectRatio' | 'imageSize', value: ImageAspectRatio | ImageSize) => void
   onToggleCharacterLock: (id: string) => void
   onToggleSceneLock: (id: string) => void
@@ -321,6 +323,235 @@ function CharacterCard({
 }
 
 // ---------------------------------------------------------------------------
+// 场景卡组件（卡片式，匹配角色卡布局）
+// ---------------------------------------------------------------------------
+
+function SceneCard({
+  scene,
+  onUpdate,
+  onUploadSheet,
+  onAddReference,
+  onToggleLock,
+  onRunConsistency,
+  onRunImageGen,
+  onRemove,
+  isGenerating,
+}: {
+  scene: SceneDesign
+  onUpdate: (id: string, field: 'name' | 'description', value: string) => void
+  onUploadSheet: (id: string, url: string) => void
+  onAddReference: (id: string, url: string) => void
+  onToggleLock: (id: string) => void
+  onRunConsistency: (id: string) => void
+  onRunImageGen: (id: string) => void
+  onRemove: (id: string) => void
+  isGenerating: boolean
+}) {
+  const mainInputRef = useRef<HTMLInputElement>(null)
+  const refInputRef = useRef<HTMLInputElement>(null)
+
+  const mainImage = scene.uploadedSheetUrl || scene.imageUrl
+  const refs = scene.referenceUrls || []
+
+  const handleMainUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    onUploadSheet(scene.id, URL.createObjectURL(file))
+  }
+
+  const handleRefUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    onAddReference(scene.id, URL.createObjectURL(file))
+  }
+
+  return (
+    <div style={{
+      background: 'var(--color-bg-elevated)',
+      borderRadius: '0.75rem',
+      border: scene.locked ? '2px solid var(--color-success)' : '1px solid var(--color-border-base)',
+      overflow: 'hidden',
+      transition: 'all 200ms ease',
+    }}>
+      {/* 顶部：图片区域 */}
+      <div style={{ display: 'flex', height: '220px', borderBottom: '1px solid var(--color-border-subtle)' }}>
+        {/* 左侧：主图 */}
+        <div
+          onClick={() => !mainImage && mainInputRef.current?.click()}
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: mainImage ? 'default' : 'pointer',
+            backgroundColor: mainImage ? 'transparent' : 'var(--color-bg-base)',
+            borderRight: '1px solid var(--color-border-subtle)',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          {mainImage ? (
+            <img src={mainImage} alt={scene.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" strokeWidth="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21,15 16,10 5,21" />
+              </svg>
+              <span style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--color-text-tertiary)' }}>
+                上传 / AI 生成
+              </span>
+            </>
+          )}
+          <input ref={mainInputRef} type="file" accept="image/*" onChange={handleMainUpload} style={{ display: 'none' }} />
+        </div>
+
+        {/* 右侧：3 张参考图网格 */}
+        <div style={{
+          width: '45%',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          gap: '4px',
+          padding: '4px',
+          backgroundColor: 'var(--color-bg-base)',
+        }}>
+          {[0, 1, 2].map((idx) => (
+            <div
+              key={idx}
+              onClick={() => !refs[idx] && refInputRef.current?.click()}
+              style={{
+                borderRadius: '6px',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: refs[idx] ? 'default' : 'pointer',
+                border: '1px dashed var(--color-border-base)',
+                backgroundColor: refs[idx] ? 'transparent' : 'var(--color-bg-elevated)',
+                fontSize: '0.6875rem',
+                color: 'var(--color-text-disabled)',
+              }}
+            >
+              {refs[idx] ? (
+                <img src={refs[idx]} alt={`参考${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <span>参考{idx + 1}</span>
+              )}
+            </div>
+          ))}
+          {/* 第四格：操作 */}
+          <div style={{
+            borderRadius: '6px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px',
+            backgroundColor: 'var(--color-bg-elevated)',
+          }}>
+            <Button variant="primary" size="sm" onClick={() => onRunImageGen(scene.id)} disabled={isGenerating || !scene.description} style={{ fontSize: '0.625rem', padding: '2px 6px' }}>
+              AI 生成
+            </Button>
+            <button
+              onClick={() => mainInputRef.current?.click()}
+              style={{ fontSize: '0.625rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              上传图片
+            </button>
+          </div>
+          <input ref={refInputRef} type="file" accept="image/*" onChange={handleRefUpload} style={{ display: 'none' }} />
+        </div>
+      </div>
+
+      {/* 底部：信息区 */}
+      <div style={{ padding: '1rem' }}>
+        {/* 名称行 */}
+        <input
+          className="form-input"
+          value={scene.name}
+          onChange={(e) => onUpdate(scene.id, 'name', e.target.value)}
+          placeholder="场景名称（必填）"
+          maxLength={20}
+          style={{
+            fontSize: '0.9375rem',
+            fontWeight: 600,
+            border: 'none',
+            background: 'transparent',
+            padding: '0.25rem 0',
+            borderBottom: '1px solid var(--color-border-subtle)',
+            width: '100%',
+            marginBottom: '0.75rem',
+          }}
+        />
+
+        {/* 描述 */}
+        <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
+          <textarea
+            className="form-textarea"
+            value={scene.description}
+            onChange={(e) => {
+              if (e.target.value.length <= 200) {
+                onUpdate(scene.id, 'description', e.target.value)
+              }
+            }}
+            placeholder="描述场景的环境特征、氛围、光线等，不超过 200 字"
+            rows={3}
+            style={{ paddingBottom: '1.75rem' }}
+          />
+          <div style={{
+            position: 'absolute',
+            bottom: '0.5rem',
+            right: '0.75rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+          }}>
+            <span style={{ fontSize: '0.75rem', color: scene.description.length > 180 ? 'var(--color-warning)' : 'var(--color-text-tertiary)' }}>
+              {scene.description.length} / 200
+            </span>
+            <button
+              onClick={() => onRunConsistency(scene.id)}
+              disabled={isGenerating}
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--color-primary)',
+                background: 'none',
+                border: 'none',
+                cursor: isGenerating ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                opacity: isGenerating ? 0.5 : 1,
+              }}
+            >
+              ✨ 智能描述
+            </button>
+          </div>
+        </div>
+
+        {/* 操作栏 */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Badge variant={scene.locked ? 'success' : 'neutral'} style={{ fontSize: '0.6875rem' }}>
+            {scene.locked ? '🔒 已锁定' : '🔓 未锁定'}
+          </Badge>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Button variant="outline" size="sm" onClick={() => onToggleLock(scene.id)}>
+              {scene.locked ? '解锁' : '锁定'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => onRemove(scene.id)} style={{ color: 'var(--color-error)' }}>
+              删除
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // 主组件
 // ---------------------------------------------------------------------------
 
@@ -331,6 +562,8 @@ export function Stage2Concept({
   onUploadCharacterSheet,
   onUpdateCharacterImageSetting,
   onUpdateScene,
+  onUploadSceneSheet,
+  onAddSceneReference,
   onUpdateSceneImageSetting,
   onToggleCharacterLock,
   onToggleSceneLock,
@@ -417,136 +650,73 @@ export function Stage2Concept({
         </div>
       </SectionCard>
 
-      {/* 场景设计区（保留原有样式） */}
+      {/* 场景设计区 — 卡片网格 */}
       <SectionCard
         title="场景概念设计"
-        description="定义关键场景的环境特征和氛围"
+        description="定义关键场景的环境特征·支持主图 + 3 张人物场景匹配参考图"
       >
-        <div className="flex justify-between items-center" style={{ marginBottom: '1rem' }}>
-          <span className="text-secondary text-sm">{scenes.length} 个场景</span>
-          <Button variant="outline" size="sm" onClick={onAddScene}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            添加场景
-          </Button>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {scenes.map((scene) => (
-            <div
-              key={scene.id}
-              className="card"
-              style={{ padding: '1.25rem', borderLeft: scene.locked ? '3px solid var(--color-success)' : '3px solid var(--color-border-base)' }}
-            >
-              <div className="flex justify-between items-center" style={{ marginBottom: '1rem' }}>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label">场景名称</label>
-                  <input
-                    className="form-input"
-                    value={scene.name}
-                    onChange={(e) => onUpdateScene(scene.id, 'name', e.target.value)}
-                    placeholder="场景名称"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={scene.locked ? 'success' : 'neutral'}>
-                    {scene.locked ? '已锁定' : '未锁定'}
-                  </Badge>
-                  <Button variant="outline" size="sm" onClick={() => onToggleSceneLock(scene.id)}>
-                    {scene.locked ? '解锁' : '锁定'}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => onRemoveScene(scene.id)}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="3,6 5,6 21,6" />
-                      <path d="M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1 2-2h4a2,2 0 0,1 2,2v2" />
-                    </svg>
-                  </Button>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label className="form-label">场景描述</label>
-                <textarea
-                  className="form-textarea"
-                  value={scene.description}
-                  onChange={(e) => onUpdateScene(scene.id, 'description', e.target.value)}
-                  placeholder="描述场景的环境、氛围、光线等关键特征..."
-                  rows={3}
-                />
-              </div>
-
-              {scene.imageUrl && (
-                <div style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">概念图预览</label>
-                  <div style={{
-                    borderRadius: '0.5rem',
-                    overflow: 'hidden',
-                    border: '1px solid var(--color-border-subtle)',
-                    maxHeight: '300px'
-                  }}>
-                    <img
-                      src={scene.imageUrl}
-                      alt={scene.name}
-                      style={{ width: '100%', height: 'auto', display: 'block' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-subtle)' }}>
-                <label className="form-label">图片生成设置</label>
-                <div className="flex gap-4" style={{ marginBottom: '1rem' }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
-                      宽高比
-                    </label>
-                    <select
-                      className="form-select"
-                      value={scene.imageAspectRatio}
-                      onChange={(e) => onUpdateSceneImageSetting(scene.id, 'imageAspectRatio', e.target.value as ImageAspectRatio)}
-                    >
-                      {aspectRatioOptions.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
-                      分辨率
-                    </label>
-                    <select
-                      className="form-select"
-                      value={scene.imageSize}
-                      onChange={(e) => onUpdateSceneImageSetting(scene.id, 'imageSize', e.target.value as ImageSize)}
-                    >
-                      {sizeOptions.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onRunConsistency('scene', scene.id)}
-                    disabled={isGenerating}
-                  >
-                    ✨ 生成一致性描述
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => onRunImageGen('scene', scene.id)}
-                    disabled={isGenerating}
-                  >
-                    🖼️ 生成概念图
-                  </Button>
-                </div>
-              </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+          gap: '1rem',
+          marginBottom: '1rem',
+        }}>
+          {/* 新建场景卡 */}
+          <div
+            onClick={onAddScene}
+            style={{
+              border: '2px dashed var(--color-border-base)',
+              borderRadius: '0.75rem',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '320px',
+              cursor: 'pointer',
+              backgroundColor: 'transparent',
+              transition: 'border-color 200ms ease, background-color 200ms ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-primary)'
+              e.currentTarget.style.backgroundColor = 'var(--color-primary-light)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-border-base)'
+              e.currentTarget.style.backgroundColor = 'transparent'
+            }}
+          >
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'var(--color-bg-base)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '0.75rem',
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
             </div>
+            <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text-secondary)' }}>新建场景</span>
+          </div>
+
+          {/* 场景卡列表 */}
+          {scenes.map((scene) => (
+            <SceneCard
+              key={scene.id}
+              scene={scene}
+              onUpdate={onUpdateScene}
+              onUploadSheet={onUploadSceneSheet}
+              onAddReference={onAddSceneReference}
+              onToggleLock={onToggleSceneLock}
+              onRunConsistency={(id) => onRunConsistency('scene', id)}
+              onRunImageGen={(id) => onRunImageGen('scene', id)}
+              onRemove={onRemoveScene}
+              isGenerating={isGenerating}
+            />
           ))}
         </div>
       </SectionCard>

@@ -81,6 +81,8 @@ interface WorkbenchState {
   // 场景
   updateSceneField: (id: string, field: 'name' | 'description', value: string) => void
   updateSceneImage: (id: string, imageUrl: string) => void
+  uploadSceneSheet: (id: string, url: string) => void
+  addSceneReference: (id: string, url: string) => void
   updateSceneImageSetting: (id: string, field: 'imageAspectRatio' | 'imageSize', value: ImageAspectRatio | ImageSize) => void
   toggleSceneLock: (id: string) => void
   addScene: () => void
@@ -223,6 +225,19 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   updateSceneImage: (id, imageUrl) =>
     set((s) => ({ scenes: s.scenes.map((c) => (c.id === id ? { ...c, imageUrl } : c)) })),
 
+  uploadSceneSheet: (id, url) =>
+    set((s) => ({ scenes: s.scenes.map((c) => (c.id === id ? { ...c, uploadedSheetUrl: url } : c)) })),
+
+  addSceneReference: (id, url) =>
+    set((s) => ({
+      scenes: s.scenes.map((c) => {
+        if (c.id !== id) return c
+        const refs = c.referenceUrls || []
+        if (refs.length >= 3) return c
+        return { ...c, referenceUrls: [...refs, url] }
+      }),
+    })),
+
   updateSceneImageSetting: (id, field, value) =>
     set((s) => ({ scenes: s.scenes.map((c) => (c.id === id ? { ...c, [field]: value } : c)) })),
 
@@ -317,12 +332,27 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
     set({ aiStatus: 'generating', aiError: null })
     get().appendLog('info', `正在为${type === 'character' ? '角色' : '场景'}「${item.name}」生成一致性描述…`)
 
+    // 收集图片 URL（主图 + 上传图稿 + 附加参考图）
+    const imageUrls: string[] = []
+    if (type === 'character') {
+      const c = item as CharacterDesign
+      if (c.uploadedSheetUrl) imageUrls.push(c.uploadedSheetUrl)
+      if (c.turnaroundUrl) imageUrls.push(c.turnaroundUrl)
+      if (c.imageUrl) imageUrls.push(c.imageUrl)
+    } else {
+      const sc = item as SceneDesign
+      if (sc.uploadedSheetUrl) imageUrls.push(sc.uploadedSheetUrl)
+      if (sc.imageUrl) imageUrls.push(sc.imageUrl)
+      if (sc.referenceUrls) imageUrls.push(...sc.referenceUrls)
+    }
+
     try {
       const result = await orchestrateStage2Consistency(
         state.projectBible,
         type,
         item.name,
         item.description,
+        imageUrls.length > 0 ? imageUrls : undefined,
       )
 
       // 查找或创建一致性描述的资产节点

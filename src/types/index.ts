@@ -118,6 +118,10 @@ export interface SceneDesign {
   name: string
   description: string
   imageUrl?: string
+  /** 附加参考图（人物-场景匹配、氛围参考，最多 3 张） */
+  referenceUrls?: string[]
+  /** 用户上传的自定义场景图稿 */
+  uploadedSheetUrl?: string
   imageAspectRatio: ImageAspectRatio
   imageSize: ImageSize
   /** AI 反推的一致性 Prompt（用于后续分镜生成锁定环境） */

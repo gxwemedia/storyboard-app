@@ -6,6 +6,7 @@ interface BadgeProps {
   variant?: BadgeVariant
   children: React.ReactNode
   className?: string
+  style?: React.CSSProperties
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
@@ -19,9 +20,9 @@ const variantStyles: Record<BadgeVariant, string> = {
 /**
  * 徽章组件 - 显示状态、标签等信息
  */
-export function Badge({ variant = 'neutral', children, className = '' }: BadgeProps) {
+export function Badge({ variant = 'neutral', children, className = '', style }: BadgeProps) {
   return (
-    <span className={`badge ${variantStyles[variant]} ${className}`}>
+    <span className={`badge ${variantStyles[variant]} ${className}`} style={style}>
       {children}
     </span>
   )

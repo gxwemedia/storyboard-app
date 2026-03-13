@@ -40,6 +40,8 @@ export function V2App() {
     uploadCharacterSheet,
     updateCharacterImageSetting,
     updateSceneField,
+    uploadSceneSheet,
+    addSceneReference,
     updateSceneImageSetting,
     updateShot,
     updateFinalNotes,
@@ -121,6 +123,8 @@ export function V2App() {
             onUploadCharacterSheet={uploadCharacterSheet}
             onUpdateCharacterImageSetting={updateCharacterImageSetting}
             onUpdateScene={updateSceneField}
+            onUploadSceneSheet={uploadSceneSheet}
+            onAddSceneReference={addSceneReference}
             onUpdateSceneImageSetting={updateSceneImageSetting}
             onToggleCharacterLock={toggleCharacterLock}
             onToggleSceneLock={toggleSceneLock}
