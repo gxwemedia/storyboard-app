@@ -9,27 +9,48 @@ export const workflowStages: WorkflowStage[] = [
 ]
 
 export const initialBible: ProjectBible = {
-  style: '黑暗奇幻 · 电影级写实材质 · 潮湿岩洞与火把主光',
-  colorScript: '冷色环境 + 极暖主光冲突，整体对比高，保留压迫感与雾气层次。',
+  style: '暗黑国风 · 电影级写实材质 · 阴云山林与晨雾主光',
+  colorScript: '冷青灰环境 + 晨光暖色点缀，整体低饱和，保留山林肃杀与仙侠气韵。',
   forbidden: '禁止鱼眼镜头、禁止卡通比例、禁止低幼色彩、禁止过度景深虚化。',
 }
 
-export const initialScript = `亚瑟握着猎魔银剑走入岩洞深处。火把的光切开潮湿空气，墙面不断回响未知生物的低吼。每往前一步，空气中的硫磺味与压迫感就更重一分。`
+export const initialScript = `原始脚本
+场景：司婆婆宅院外
+时间：清晨（一片阴云笼罩延康）
+人物：秦牧 龙麒麟 司幼幽
+日落月升，昼夜交替，龙麒麟疾驰。
+清晨，龙麒麟气喘吁吁落地。
+龙膜麟：公子⋯我…我跑不动了⋯
+秦牧从饕餮袋取出一盆赤火灵丹，龙麒麟猛吃。
+秦牧（看地图，松了一口气）：距离霸州只剩一千里了，今晚就能赶到。先找个地方休息吧…
+秦牧环顾山林，见远处有座宅院。
+秦牧（内心）：好新的一座宅院，似乎是刚刚建成的⋯
+突然，一个美丽女子（司幼幽）走出宅院，与秦牧四目相对。
+秦牧（惊喜）：婆婆？你怎么在这里！
+司幼幽（惊讶）：牧儿？你怎么找过来的？我好不容易才甩掉瞎子和马爷，居然被你寻到了。
+秦牧（警觉）：不对，你是婆婆还是厉教主？
+司幼幽（笑）：老魔头暂时被我镇压住了，老伽菜虽然没能除掉他，但也让他元气大伤，我现在与他势均力敌，于是和他定了协议。晚上的时候他出来，自天的时候我出来。
+秦牧（狐疑）：倘若你真的是婆婆，为何还要故意避开马爷爷和瞎爷爷？为何不回大墟？
+司幼幽（叹）：回去又如何，大墟晚上有黑暗来袭，如果老魔头再跑出来折腾，他们几个老骨头怎能禁得起？不如就住在这里，磨一磨老魔头的心性。
+司幼幽瞪泰牧。
+司幼幽：臭小子连婆婆也敢怀疑了？我若是老魔头，想害你还需要编假话？
+秦牧（怔，笑）：婆婆说得有理。
+`
 
 export const conceptReferences: ConceptReference[] = [
-  { id: 'concept-a', title: '亚瑟 · 冷峻猎魔版', subtitle: '银甲、旧伤、火把反打光、洞穴潮湿颗粒感', palette: 'from-sky-500/25 via-slate-900 to-slate-950' },
-  { id: 'concept-b', title: '废土龙巢 · 熔岩残照版', subtitle: '红鳞巨龙、石灰岩洞壁、硫磺雾、热冷对冲', palette: 'from-orange-500/25 via-rose-950 to-slate-950' },
-  { id: 'concept-c', title: '导演备选 · 低色温悬疑版', subtitle: '压暗环境、单点主光、强化呼吸声空间感', palette: 'from-violet-500/25 via-slate-950 to-slate-950' },
+  { id: 'concept-a', title: '秦牧 · 少年牧神版', subtitle: '布衣短褐、饕餮袋、晨雾散射光、山林清冷质感', palette: 'from-sky-500/25 via-slate-900 to-slate-950' },
+  { id: 'concept-b', title: '龙麒麟 · 疾驰旷野版', subtitle: '麒麟鳞甲、日夜交替光影、旷野沙尘、速度动态模糊', palette: 'from-orange-500/25 via-rose-950 to-slate-950' },
+  { id: 'concept-c', title: '司幼幽 · 宅院初现版', subtitle: '美丽女子、新建宅院门前、阴云柔光、克制温情', palette: 'from-violet-500/25 via-slate-950 to-slate-950' },
 ]
 
 export const initialShotSpecs: ShotSpec[] = [
-  { id: 'shot-01', shotCode: 'S01', description: '亚瑟手持火把步入洞穴，肩背僵硬，视线被前方黑暗吸走。', lens: '24mm 广角 / 过肩镜头 / 机位略低于肩线', composition: 'OTS，前景保留火把与岩壁切面，突出人物渺小感。', emotion: '警觉、克制、强压迫感', scale: 'WS', focalLength: '24mm', keyLight: 'Backlit', axisAnchor: '以亚瑟肩线为轴线基准', continuityLock: '' },
-  { id: 'shot-02', shotCode: 'S02', description: '火光扫过远处巨龙鳞片，只露出一只反光龙眼与半截头骨轮廓。', lens: '135mm 长焦 / 极近特写 / 焦点压在龙眼高光', composition: '画面几乎只保留龙眼与热雾边缘，背景全部压暗。', emotion: '威压、不可知、猎物被注视', scale: 'ECU', focalLength: '135mm', keyLight: 'Rembrandt', axisAnchor: '', continuityLock: '与上一镜保持洞穴同一空间方向' },
+  { id: 'shot-01', shotCode: 'S01', sceneId: 'SC01', description: '日落月升快速交替，龙麒麟驮着秦牧疾驰穿越旷野与山林。', imagePrompt: '@龙麒麟 驮着 @秦牧 穿越旷野，日落月升快速交替/\n@LongQilin carrying @QinMu galloping across wilderness, rapid day-night transition', videoPrompt: '@龙麒麟 全速奔跑、镜头侧面跟拍平移/\n@LongQilin running at full speed, camera tracking from side', dialogue: '', soundEffect: '风声呼啸/蹄声密集/昼夜切换的环境音变化', lens: '24mm 广角 / 跟拍运动镜头 / 机位平视', composition: '前景保留飞驰的草地与树影，龙麒麟居画面中央偏右。', emotion: '急迫、奔波、昼夜不停的紧张感', scale: 'WS', focalLength: '24mm', keyLight: 'Natural', axisAnchor: '以龙麒麟奔跑方向为轴线基准', continuityLock: '', notes: '需要日夜快速交替的光影特效', duration: 4 },
+  { id: 'shot-02', shotCode: 'S02', sceneId: 'SC02', description: '清晨阴云下，秦牧与司幼幽在宅院门前四目相对，表情从惊喜转为警觉。', imagePrompt: '@秦牧 与 @司幼幽 在新建宅院门前对视，阴云笼罩的清晨/\n@QinMu and @SiYouyou facing each other at manor gate, overcast morning', videoPrompt: '@秦牧 表情从惊喜转为警觉、@司幼幽 微笑中带意外/\nExpression shift from surprise to alert, soft overcast light', dialogue: '秦牧：婆婆？你怎么在这里！', soundEffect: '晨风轻拂树叶/远处鸟鸣', lens: '85mm 中长焦 / 双人中景 / 机位平视', composition: '两人对称构图，宅院大门居中，晨雾弥漫前景。', emotion: '惊喜、试探、暗藏警觉', scale: 'MS', focalLength: '85mm', keyLight: 'Loop', axisAnchor: '以两人连线为轴线基准', continuityLock: '与上一镜保持同一山林环境方向', notes: '', duration: 5 },
 ]
 
 export const outputFrames: OutputFrame[] = [
-  { id: 'frame-01', title: 'Shot 01 / 火把入洞', engine: 'ComfyUI / IC-Light', status: 'ready', caption: '亚瑟进入洞穴，火把主光与湿冷环境形成强对比。', grade: '镜头一致性 93%', palette: 'from-slate-950 via-sky-900/40 to-amber-500/20' },
-  { id: 'frame-02', title: 'Shot 02 / 龙眼现身', engine: 'Gemini Flash + ControlNet', status: 'ready', caption: '长焦压缩空间，龙眼高光与热雾边缘保持稳定。', grade: '镜头一致性 96%', palette: 'from-slate-950 via-rose-950/40 to-orange-500/20' },
+  { id: 'frame-01', title: 'Shot 01 / 龙麒麟疾驰', engine: 'ComfyUI / IC-Light', status: 'ready', caption: '龙麒麟驮秦牧昼夜疾驰，日落月升快速交替光影。', grade: '镜头一致性 93%', palette: 'from-slate-950 via-sky-900/40 to-amber-500/20' },
+  { id: 'frame-02', title: 'Shot 02 / 宅院重逢', engine: 'Gemini Flash + ControlNet', status: 'ready', caption: '秦牧与司幼幽宅院门前对视，晨雾柔光与阴云氛围。', grade: '镜头一致性 96%', palette: 'from-slate-950 via-rose-950/40 to-orange-500/20' },
   { id: 'frame-03', title: 'Shot 03 / 终版签发包', engine: 'Archive Bundle', status: 'locked', caption: '等待导演最终签发后生成可交付的 PDF / JSON 包。', grade: '待签发', palette: 'from-slate-950 via-violet-950/40 to-fuchsia-500/20' },
 ]
 

@@ -67,6 +67,8 @@ export interface AiRequestOptions {
   temperature?: number
   jsonMode?: boolean
   signal?: AbortSignal
+  /** 可重试状态码（429/500/502/503/524）自动重试次数，默认 2 */
+  maxRetries?: number
 }
 
 export interface AiImageRequestOptions extends AiRequestOptions {
@@ -95,12 +97,15 @@ export class AiClientError extends Error {
 // Core — sendPrompt
 // ---------------------------------------------------------------------------
 
+/** 可重试的 HTTP 状态码 */
+const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 524])
+
 export async function sendPrompt(
   messages: AiMessage[],
   options: AiRequestOptions = {},
 ): Promise<AiResponse> {
   const { baseUrl, apiKey, model, wireApi } = getConfig()
-  const { timeoutMs = 60_000, temperature = 0.7, jsonMode = false, signal: externalSignal } = options
+  const { timeoutMs = 60_000, temperature = 0.7, jsonMode = false, signal: externalSignal, maxRetries = 2 } = options
 
   if (!apiKey) {
     throw new AiClientError(
@@ -110,63 +115,97 @@ export async function sendPrompt(
     )
   }
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
-  const signal = externalSignal
-    ? composeAbortSignals(externalSignal, controller.signal)
-    : controller.signal
+  // 根据 wireApi 选择端点和请求格式
+  const { endpoint, body } = wireApi === 'responses'
+    ? buildResponsesRequest(baseUrl, model, messages, temperature, jsonMode)
+    : buildChatRequest(baseUrl, model, messages, temperature, jsonMode)
 
-  try {
-    // 根据 wireApi 选择端点和请求格式
-    const { endpoint, body } = wireApi === 'responses'
-      ? buildResponsesRequest(baseUrl, model, messages, temperature, jsonMode)
-      : buildChatRequest(baseUrl, model, messages, temperature, jsonMode)
+  let lastError: AiClientError | null = null
 
-    console.log('API请求参数:', {
-      endpoint,
-      model,
-      wireApi,
-      hasApiKey: !!apiKey,
-      messagesCount: messages.length,
-      temperature,
-      jsonMode
-    })
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    // 重试时等待指数退避（第 1 次重试等 3 秒，第 2 次等 9 秒）
+    if (attempt > 0) {
+      const delay = Math.min(3_000 * Math.pow(3, attempt - 1), 30_000)
+      console.log(`⏳ 第 ${attempt} 次重试，等待 ${delay / 1000} 秒后重新请求…`)
+      await new Promise((r) => setTimeout(r, delay))
+    }
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(body),
-      signal,
-    })
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+    const signal = externalSignal
+      ? composeAbortSignals(externalSignal, controller.signal)
+      : controller.signal
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '')
-      console.error(`API请求失败: HTTP ${response.status}`, {
+    try {
+      console.log(`API请求参数${attempt > 0 ? ` (重试 #${attempt})` : ''}:`, {
         endpoint,
-        status: response.status,
-        statusText: response.statusText,
-        errorText,
-        config: { baseUrl, model, wireApi }
+        model,
+        wireApi,
+        hasApiKey: !!apiKey,
+        messagesCount: messages.length,
+        temperature,
+        jsonMode
       })
-      throw createHttpError(response.status, errorText)
-    }
 
-    const data = await response.json()
-    return wireApi === 'responses'
-      ? parseResponsesApiResult(data)
-      : parseChatResult(data)
-  } catch (err) {
-    if (err instanceof AiClientError) throw err
-    if ((err as Error).name === 'AbortError') {
-      throw new AiClientError('请求超时或被取消。', 0, 'TIMEOUT')
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal,
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '')
+        console.error(`API请求失败: HTTP ${response.status}`, {
+          endpoint,
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText.slice(0, 200),
+          config: { baseUrl, model, wireApi }
+        })
+
+        const httpError = createHttpError(response.status, errorText)
+
+        // 可重试状态码：自动重试
+        if (RETRYABLE_STATUS_CODES.has(response.status) && attempt < maxRetries) {
+          console.warn(`⚠️ HTTP ${response.status} 可重试，将自动重试 (${attempt + 1}/${maxRetries})…`)
+          lastError = httpError
+          continue
+        }
+
+        throw httpError
+      }
+
+      const data = await response.json()
+      if (attempt > 0) {
+        console.log(`✅ 重试成功 (第 ${attempt} 次重试)`)
+      }
+      return wireApi === 'responses'
+        ? parseResponsesApiResult(data)
+        : parseChatResult(data)
+    } catch (err) {
+      if (err instanceof AiClientError) {
+        // 已经是可识别错误，如果是可重试的且还有重试机会
+        if (err.status && RETRYABLE_STATUS_CODES.has(err.status) && attempt < maxRetries) {
+          lastError = err
+          continue
+        }
+        throw err
+      }
+      if ((err as Error).name === 'AbortError') {
+        throw new AiClientError('请求超时或被取消。', 0, 'TIMEOUT')
+      }
+      throw new AiClientError(`网络错误：${(err as Error).message}`, 0, 'NETWORK_ERROR')
+    } finally {
+      clearTimeout(timeout)
     }
-    throw new AiClientError(`网络错误：${(err as Error).message}`, 0, 'NETWORK_ERROR')
-  } finally {
-    clearTimeout(timeout)
   }
+
+  // 所有重试都失败
+  throw lastError || new AiClientError('请求失败，已用尽所有重试次数。', 0, 'RETRY_EXHAUSTED')
 }
 
 // ---------------------------------------------------------------------------
@@ -443,6 +482,7 @@ function createHttpError(status: number, body: string): AiClientError {
     500: 'API 服务端内部错误，请稍后重试。',
     502: 'API 网关错误，服务可能暂时不可用。',
     503: 'API 服务暂时不可用，请稍后重试。',
+    524: 'Cloudflare 网关超时：API 服务器处理耗时过长。系统将自动重试，若持续失败请检查 API 服务状态。',
   }
   const msg = messages[status] || `API 请求失败 (HTTP ${status}): ${body.slice(0, 200)}`
   const code = status === 401 ? 'AUTH_ERROR' : status === 429 ? 'RATE_LIMIT' : 'HTTP_ERROR'
