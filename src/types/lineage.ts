@@ -4,7 +4,7 @@
  * 用于追踪每个资产（图片、灰模等）的生成来源、参数依赖和版本历史
  */
 
-import type { StageId, ImageAspectRatio, ImageSize } from '../index'
+import type { StageId, ImageAspectRatio, ImageSize } from './index'
 
 // ---------------------------------------------------------------------------
 // 资产节点类型
